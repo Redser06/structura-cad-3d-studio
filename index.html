@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StructuraCAD — Exterior Structural &amp; Joinery Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      /* Deep Architectural Blueprint Canvas (Preserved) */
+      --bg-deep: #070d19;
+      --bg-panel: rgba(11, 18, 31, 0.82);
+      --bg-card: rgba(255, 255, 255, 0.025);
+      --bg-card-hover: rgba(255, 255, 255, 0.05);
+
+      /* Whisper-Thin Linear/Apple Translucent Borders */
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-standard: rgba(255, 255, 255, 0.12);
+      --border-focus: rgba(147, 197, 253, 0.42);
+
+      /* Refined Architectural Palette — Soft Blueprint Slate, Warm Cedar Brass, Muted Terracotta */
+      --blueprint-blue: #93c5fd;
+      --blueprint-accent: #60a5fa;
+      --blueprint-tint: rgba(147, 197, 253, 0.11);
+      --brass: #d4a373;
+      --brass-soft: #e6ccb2;
+      --brass-tint: rgba(212, 163, 115, 0.13);
+      --terracotta: #e07a5f;
+      --sage: #81b29a;
+
+      /* Luminance Text Hierarchy */
+      --text-main: #f4f6f8;
+      --text-secondary: #cbd5e1;
+      --text-muted: #8a99ad;
+      --text-dim: #5b6b7f;
+
+      /* Typography */
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-feature-settings: "cv01", "ss03";
+      letter-spacing: -0.011em;
+    }
+
+    /* Deep Architectural Blueprint Viewport */
+    #viewport-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 44%, #101f36 0%, #070d19 78%);
+      z-index: 1;
+    }
+
+    /* Top Header Bar */
+    .topbar {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      height: 56px;
+      background: var(--bg-panel);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      z-index: 20;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: rgba(147, 197, 253, 0.08);
+      border: 1px solid rgba(147, 197, 253, 0.28);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 600;
+      color: var(--blueprint-blue);
+      font-size: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.025em;
+      color: var(--text-main);
+    }
+
+    .brand-sub {
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    /* Natural Language Specification Bar */
+    .prompt-bar {
+      flex: 1;
+      max-width: 560px;
+      margin: 0 20px;
+      display: flex;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9px;
+      padding: 4px 5px 4px 13px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .prompt-bar:focus-within {
+      border-color: var(--border-focus);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .prompt-prefix {
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-right: 10px;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .prompt-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      outline: none;
+      user-select: text;
+    }
+
+    .prompt-btn {
+      background: rgba(147, 197, 253, 0.14);
+      color: var(--text-main);
+      border: 1px solid rgba(147, 197, 253, 0.32);
+      border-radius: 6px;
+      padding: 6px 13px;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .prompt-btn:hover {
+      background: rgba(147, 197, 253, 0.22);
+      border-color: var(--blueprint-blue);
+    }
+
+    /* Mode Switcher */
+    .mode-group {
+      display: flex;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.025);
+      padding: 3px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .mode-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 5px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .mode-btn:hover {
+      color: var(--text-main);
+    }
+
+    .mode-btn.active {
+      background: var(--blueprint-tint);
+      border-color: rgba(147, 197, 253, 0.3);
+      color: var(--blueprint-blue);
+    }
+
+    .mode-btn.amber-mode.active {
+      background: var(--brass-tint);
+      border-color: rgba(212, 163, 115, 0.4);
+      color: var(--brass-soft);
+    }
+
+    /* Left Panel: Parametric Builder */
+    .left-panel {
+      position: absolute;
+      top: 82px;
+      left: 16px;
+      bottom: 66px;
+      width: 326px;
+      background: var(--bg-panel);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Right Panel: Joint Inspector & Schedule */
+    .right-panel {
+      position: absolute;
+      top: 82px;
+      right: 16px;
+      bottom: 66px;
+      width: 362px;
+      background: var(--bg-panel);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    .panel-header {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    .panel-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--blueprint-blue);
+    }
+
+    .status-dot.amber {
+      background: var(--brass);
+    }
+
+    .panel-body {
+      padding: 14px 16px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .panel-body::-webkit-scrollbar {
+      width: 4px;
+    }
+    .panel-body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 4px;
+    }
+
+    /* Structure Template Cards */
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .tpl-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 9px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tpl-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-standard);
+    }
+
+    .tpl-card.active {
+      background: var(--blueprint-tint);
+      border-color: rgba(147, 197, 253, 0.38);
+    }
+
+    .tpl-name {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .tpl-desc {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Parametric Controls */
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .control-val {
+      font-family: var(--font-mono);
+      color: var(--blueprint-blue);
+      font-weight: 500;
+      font-size: 11.5px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.10);
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--text-main);
+      border: 2px solid #0f172a;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.12);
+    }
+
+    input[type="range"].amber-slider::-webkit-slider-thumb {
+      background: var(--brass-soft);
+    }
+
+    /* Subtle Section Divider */
+    .section-tag {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 5px;
+      margin-top: 2px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Joint Hotspots List in Left Panel */
+    .joint-pills {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .joint-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .joint-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(212, 163, 115, 0.35);
+    }
+
+    .joint-btn.active {
+      background: var(--brass-tint);
+      border-color: rgba(212, 163, 115, 0.5);
+    }
+
+    .joint-btn-id {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--brass);
+      font-weight: 500;
+    }
+
+    .joint-btn-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    /* Right Panel: Joint Detail Card */
+    .joint-inspector-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-standard);
+      border-radius: 10px;
+      padding: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+    }
+
+    .joint-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .joint-code {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 7px;
+      background: var(--brass-tint);
+      border: 1px solid rgba(212, 163, 115, 0.35);
+      color: var(--brass-soft);
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .joint-name {
+      font-family: var(--font-display);
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-top: 5px;
+      letter-spacing: -0.015em;
+    }
+
+    .reset-cam-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-standard);
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .reset-cam-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    /* Technical SVG Blueprint Schematic inside Inspector */
+    .schematic-box {
+      background: #08101f;
+      border: 1px solid rgba(147, 197, 253, 0.16);
+      border-radius: 8px;
+      height: 155px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .schematic-box svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .schematic-caption {
+      position: absolute;
+      bottom: 5px;
+      right: 8px;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+    /* Hardware Callout List */
+    .hw-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hw-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.025);
+      padding: 7px 10px;
+      border-radius: 6px;
+      border-left: 2px solid var(--brass);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .hw-spec {
+      font-family: var(--font-mono);
+      color: var(--brass-soft);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .drill-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .drill-step {
+      display: flex;
+      gap: 8px;
+    }
+
+    .drill-num {
+      font-family: var(--font-mono);
+      color: var(--blueprint-blue);
+      font-weight: 500;
+      font-size: 11px;
+    }
+
+    /* Cut List & Fastener BOM Table */
+    .bom-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .bom-table th {
+      text-align: left;
+      color: var(--text-muted);
+      font-weight: 500;
+      padding: 6px 4px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 11px;
+    }
+
+    .bom-table td {
+      padding: 6px 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+    }
+
+    .bom-qty {
+      font-family: var(--font-mono);
+      color: var(--text-main);
+      font-weight: 500;
+      font-size: 11.5px;
+    }
+
+    /* Bottom Sequence Bar */
+    .bottom-bar {
+      position: absolute;
+      bottom: 14px;
+      left: 16px;
+      right: 16px;
+      height: 44px;
+      background: var(--bg-panel);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 12px;
+    }
+
+    .step-pills {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .step-pill {
+      padding: 5px 11px;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 11.5px;
+    }
+
+    .step-pill:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .step-pill.active {
+      background: var(--blueprint-tint);
+      border-color: rgba(147, 197, 253, 0.28);
+      color: var(--blueprint-blue);
+    }
+
+    /* 3D Floating Hotspot Pins in Screen Space */
+    #hotspot-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      overflow: hidden;
+    }
+
+    .hotspot-pin {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: auto;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(11, 18, 31, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(212, 163, 115, 0.45);
+      color: var(--text-main);
+      padding: 5px 11px 5px 8px;
+      border-radius: 999px;
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      font-weight: 500;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.45);
+      transition: transform 0.15s, background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+
+    .hotspot-pin:hover, .hotspot-pin.active {
+      transform: translate(-50%, -50%) scale(1.06);
+      background: rgba(30, 41, 59, 0.95);
+      border-color: var(--brass-soft);
+      z-index: 15;
+    }
+
+    .pin-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--brass);
+    }
+
+    /* Floating Viewport HUD Hint */
+    .viewport-hud {
+      position: absolute;
+      top: 82px;
+      left: 356px;
+      z-index: 12;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hud-badge {
+      background: rgba(11, 18, 31, 0.72);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast-banner {
+      position: fixed;
+      top: 82px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(129, 178, 154, 0.45);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .toast-banner.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 3D WebGL Canvas Container -->
+  <div id="viewport-container"></div>
+
+  <!-- 2D Projected Interactive Joint Pins -->
+  <div id="hotspot-layer"></div>
+
+  <!-- Viewport Telemetry HUD -->
+  <div class="viewport-hud">
+    <div class="hud-badge" id="hud-camera-state">
+      <span>View: Full Structure Orbit</span>
+      <span style="color:var(--text-dim)">·</span>
+      <span id="hud-dims-summary" style="font-family:var(--font-mono); color:var(--blueprint-blue)">14.0' W × 12.0' D × 9.5' H</span>
+    </div>
+    <div class="hud-badge" style="color:var(--text-muted);">
+      <span>Select any <strong style="color:var(--brass-soft); font-weight:500;">J1–J4 Joint Pin</strong> to zoom in &amp; inspect bolt placement</span>
+    </div>
+  </div>
+
+  <div class="toast-banner" id="toast-banner">Updated 3D structural blueprint</div>
+
+  <!-- Top Navigation & Natural Language Builder Bar -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-badge">3D</div>
+      <div>
+        <div class="brand-title">StructuraCAD</div>
+        <div class="brand-sub">Exterior Blueprint &amp; Joinery Studio</div>
+      </div>
+    </div>
+
+    <form class="prompt-bar" id="nl-form">
+      <span class="prompt-prefix">Specification</span>
+      <input
+        type="text"
+        id="nl-input"
+        class="prompt-input"
+        placeholder="e.g., 16x12 attached pergola, 10ft height, 6x6 posts, 10 rafters..."
+        value="14x12 attached cedar pergola, 9.5ft height, 6x6 posts, 9 rafters"
+      />
+      <button type="submit" class="prompt-btn">Update Model</button>
+    </form>
+
+    <div class="mode-group">
+      <button class="mode-btn active" data-render="blueprint" id="btn-mode-blueprint" title="Architectural Shaded + Blueprint Edges">
+        <span>Blueprint Shaded</span>
+      </button>
+      <button class="mode-btn" data-render="wireframe" id="btn-mode-wireframe" title="Pure Technical Wireframe">
+        <span>Wireframe</span>
+      </button>
+      <button class="mode-btn amber-mode" data-render="xray" id="btn-mode-xray" title="Ghost Timber to highlight internal steel bolts & lag screws">
+        <span>X-Ray Fasteners</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Left Panel: Parametric Structure & Joint Explorer -->
+  <aside class="left-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="status-dot"></span>
+        <span>Structure &amp; Dimensions</span>
+      </div>
+      <span style="font-family:var(--font-mono); font-size:10.5px; color:var(--text-muted)">IRC 2024</span>
+    </div>
+
+    <div class="panel-body">
+      <div class="section-tag">
+        <span>Alteration Preset</span>
+        <span style="font-weight:400; font-size:10.5px">Select Type</span>
+      </div>
+      <div class="template-grid">
+        <div class="tpl-card active" data-template="attached-pergola">
+          <div class="tpl-name">Attached</div>
+          <div class="tpl-desc">Ledger + Posts</div>
+        </div>
+        <div class="tpl-card" data-template="freestanding-pergola">
+          <div class="tpl-name">Freestanding</div>
+          <div class="tpl-desc">4-Post Yard</div>
+        </div>
+        <div class="tpl-card" data-template="lean-to-canopy">
+          <div class="tpl-name">Veranda</div>
+          <div class="tpl-desc">Sloped Rafters</div>
+        </div>
+      </div>
+
+      <div class="section-tag">
+        <span>Envelope Measurements</span>
+        <span style="font-weight:400; font-size:10.5px">Imperial (ft)</span>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Span Width (Along Wall)</span>
+          <span class="control-val" id="val-width">14.0 ft</span>
+        </div>
+        <input type="range" id="slider-width" min="8" max="24" step="0.5" value="14" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Projection Depth (Outward)</span>
+          <span class="control-val" id="val-depth">12.0 ft</span>
+        </div>
+        <input type="range" id="slider-depth" min="8" max="18" step="0.5" value="12" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Clearance Height</span>
+          <span class="control-val" id="val-height">9.5 ft</span>
+        </div>
+        <input type="range" id="slider-height" min="7.5" max="12" step="0.5" value="9.5" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Rafter Count (2×8 Joists)</span>
+          <span class="control-val" id="val-rafters">9 rafters (19.5" OC)</span>
+        </div>
+        <input type="range" id="slider-rafters" min="5" max="15" step="1" value="9" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Post Timber Section</span>
+          <span class="control-val" id="val-postsize">6×6 Nominal (5.5")</span>
+        </div>
+        <input type="range" id="slider-postsize" min="4" max="8" step="2" value="6" />
+      </div>
+
+      <div class="section-tag">
+        <span>Joint Dissection</span>
+        <span style="font-weight:400; font-size:10.5px">Explode View</span>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Separate Joints &amp; Fasteners</span>
+          <span class="control-val" id="val-explode" style="color:var(--brass-soft)">0% (Assembled)</span>
+        </div>
+        <input type="range" class="amber-slider" id="slider-explode" min="0" max="100" step="1" value="0" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Zoom to Connection Interface</span>
+          <span style="font-size:10.5px; color:var(--text-muted)">Click to focus</span>
+        </div>
+        <div class="joint-pills">
+          <button class="joint-btn" data-joint="J1">
+            <span class="joint-btn-id">J1 · Foundation</span>
+            <span class="joint-btn-title">Post Base Anchor</span>
+          </button>
+          <button class="joint-btn" data-joint="J2">
+            <span class="joint-btn-id">J2 · Header</span>
+            <span class="joint-btn-title">Post-to-Beam Cap</span>
+          </button>
+          <button class="joint-btn" data-joint="J3">
+            <span class="joint-btn-id">J3 · House Wall</span>
+            <span class="joint-btn-title">Ledger &amp; Hanger</span>
+          </button>
+          <button class="joint-btn" data-joint="J4">
+            <span class="joint-btn-id">J4 · Roof Seat</span>
+            <span class="joint-btn-title">Rafter Birdsmouth</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Panel: Zoom-to-Understand Hardware Inspector + Cut/Bolt BOM -->
+  <aside class="right-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="status-dot amber"></span>
+        <span>Joint &amp; Fastener Detail</span>
+      </div>
+      <button class="reset-cam-btn" id="btn-reset-camera">Reset View (Esc)</button>
+    </div>
+
+    <div class="panel-body">
+      <!-- Active Joint Dissection Card -->
+      <div class="joint-inspector-card">
+        <div class="joint-header">
+          <div>
+            <span class="joint-code" id="insp-code">J2 · PRIMARY LOAD TRANSFER</span>
+            <div class="joint-name" id="insp-title">Post-to-Double-Beam Carriage Tie</div>
+          </div>
+        </div>
+
+        <!-- 2D Vector Cross-Section Schematic with Bolt Callouts -->
+        <div class="schematic-box" id="insp-schematic">
+          <!-- Dynamically injected precision SVG blueprint -->
+        </div>
+
+        <div class="section-tag">
+          <span>Hardware at Connection</span>
+          <span id="insp-per-joint" style="font-weight:400; font-size:10.5px">Per Corner</span>
+        </div>
+        <div class="hw-list" id="insp-hw-list">
+          <!-- Dynamically populated fastener rows -->
+        </div>
+
+        <div class="section-tag">
+          <span>Assembly &amp; Drill Notes</span>
+          <span style="font-weight:400; font-size:10.5px">Bit &amp; Torque</span>
+        </div>
+        <div class="drill-steps" id="insp-steps">
+          <!-- Dynamically populated drill instructions -->
+        </div>
+      </div>
+
+      <!-- Complete Live Cut List & Hardware BOM -->
+      <div class="section-tag">
+        <span>Cut List &amp; Fastener Schedule</span>
+        <span id="bom-total-bolts" style="font-family:var(--font-mono); color:var(--brass-soft); font-weight:500">48 fasteners</span>
+      </div>
+      <table class="bom-table">
+        <thead>
+          <tr>
+            <th>Component / Fastener</th>
+            <th>Specification</th>
+            <th>Qty</th>
+          </tr>
+        </thead>
+        <tbody id="bom-tbody">
+          <!-- Dynamically populated -->
+        </tbody>
+      </table>
+    </div>
+  </aside>
+
+  <!-- Bottom Step-by-Step Build Sequencer -->
+  <footer class="bottom-bar">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span style="color:var(--text-secondary); font-weight:500;">Build Stage</span>
+      <div class="step-pills" id="build-stepper">
+        <button class="step-pill active" data-step="6">Complete Assembly</button>
+        <button class="step-pill" data-step="1">1. Footings</button>
+        <button class="step-pill" data-step="2">2. Posts</button>
+        <button class="step-pill" data-step="3">3. Ledger &amp; Beams</button>
+        <button class="step-pill" data-step="4">4. Rafters</button>
+        <button class="step-pill" data-step="5">5. Shade Lath</button>
+      </div>
+    </div>
+    <div style="color:var(--text-muted); display:flex; align-items:center; gap:14px; font-size:11.5px;">
+      <span>Drag: Orbit</span>
+      <span>Scroll: Zoom</span>
+      <span>Right-Drag: Pan</span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // =========================================================================
+    // 1. STATE & JOINT ENGINEERING DATABASE
+    // =========================================================================
+    const state = {
+      template: 'attached-pergola', // 'attached-pergola' | 'freestanding-pergola' | 'lean-to-canopy'
+      width: 14.0,     // ft (X axis along house wall)
+      depth: 12.0,     // ft (Z axis projecting out from house wall)
+      height: 9.5,     // ft (Y axis clearance)
+      rafterCount: 9,  // number of 2x8 rafters
+      postNominal: 6,  // 4 or 6 or 8
+      explode: 0.0,    // 0 to 1
+      renderMode: 'blueprint', // 'blueprint' | 'wireframe' | 'xray'
+      buildStep: 6,    // 1..6 (6 = all)
+      activeJoint: 'J2'
+    };
+
+    const JOINT_SPECS = {
+      J1: {
+        code: 'J1 · FOUNDATION INTERFACE',
+        title: 'Concrete Post Base & Standoff Anchor',
+        perJoint: 'Per Post Footing',
+        hardware: [
+          { name: 'Simpson ABA66Z Standoff Base', spec: '1" Standoff · 14-Ga ZMAX' },
+          { name: 'Wedge Expansion Anchor Bolt', spec: '5/8" × 5" Galv (×1)' },
+          { name: 'Structural SDS Heavy Screws', spec: '1/4" × 3" Hex (×4)' }
+        ],
+        steps: [
+          'Drill 5/8" hole 4.25" deep into cured concrete pier using a rotary hammer.',
+          'Set 1" standoff base plate to prevent end-grain moisture rot; torque nut to 55 ft-lbs.',
+          'Plumb 6×6 post and drive four 1/4"×3" structural screws through the side flanges.'
+        ],
+        svg: `
+          <svg viewBox="0 0 320 150" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="gridJ1" width="16" height="16" patternUnits="userSpaceOnUse">
+                <path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(147,197,253,0.07)" stroke-width="1"/>
+              </pattern>
+            </defs>
+            <rect width="320" height="150" fill="url(#gridJ1)"/>
+            <rect x="95" y="102" width="130" height="42" fill="rgba(148,163,184,0.14)" stroke="#64748b" stroke-width="1.2"/>
+            <text x="103" y="136" fill="#8a99ad" font-family="IBM Plex Mono" font-size="8.5">CONCRETE PIER (24" MIN)</text>
+            <rect x="122" y="12" width="76" height="78" fill="rgba(147,197,253,0.10)" stroke="#93c5fd" stroke-width="1.5"/>
+            <text x="135" y="32" fill="#93c5fd" font-family="IBM Plex Mono" font-size="9" font-weight="500">6×6 POST</text>
+            <path d="M 118 58 L 118 102 L 202 102 L 202 58" fill="none" stroke="#d4a373" stroke-width="2.5"/>
+            <rect x="122" y="90" width="76" height="12" fill="rgba(212,163,115,0.22)" stroke="#d4a373" stroke-width="1.2"/>
+            <line x1="160" y1="84" x2="160" y2="132" stroke="#e07a5f" stroke-width="3.5" stroke-dasharray="3,1"/>
+            <rect x="153" y="80" width="14" height="4" fill="#e07a5f"/>
+            <line x1="114" y1="68" x2="138" y2="68" stroke="#e6ccb2" stroke-width="2"/>
+            <line x1="114" y1="80" x2="138" y2="80" stroke="#e6ccb2" stroke-width="2"/>
+            <line x1="182" y1="68" x2="206" y2="68" stroke="#e6ccb2" stroke-width="2"/>
+            <line x1="182" y1="80" x2="206" y2="80" stroke="#e6ccb2" stroke-width="2"/>
+            <text x="14" y="75" fill="#e6ccb2" font-family="IBM Plex Mono" font-size="8.5">4× 1/4" SDS SCREWS</text>
+            <text x="210" y="98" fill="#d4a373" font-family="IBM Plex Mono" font-size="8.5">1" STANDOFF GAP</text>
+            <text x="210" y="122" fill="#e07a5f" font-family="IBM Plex Mono" font-size="8.5">5/8"×5" ANCHOR</text>
+          </svg>
+        `
+      },
+      J2: {
+        code: 'J2 · PRIMARY LOAD TRANSFER',
+        title: 'Notched Post-to-Double-Beam Carriage Assembly',
+        perJoint: 'Per Post Top',
+        hardware: [
+          { name: 'Thru-Bolt Carriage / Hex Bolts', spec: '1/2" × 8" Galv + Washers (×4)' },
+          { name: 'Steel T-Strap / LPCZ Post Cap', spec: '12-Ga Powder-Coated (×2)' },
+          { name: 'Pilot Bore Requirement', spec: '9/16" Auger Bit (3" Stagger)' }
+        ],
+        steps: [
+          'Clamp outer and inner 2×10 drop-beams flush against the 6×6 post top shoulder.',
+          'Bore two staggered 9/16" through-holes per beam face (minimum 2" edge distance).',
+          'Drive 1/2"×8" hot-dip galvanized bolts with flat washers; torque to 45 ft-lbs.'
+        ],
+        svg: `
+          <svg viewBox="0 0 320 150" xmlns="http://www.w3.org/2000/svg">
+            <rect width="320" height="150" fill="#08101f"/>
+            <rect x="125" y="25" width="70" height="115" fill="rgba(147,197,253,0.09)" stroke="#93c5fd" stroke-width="1.5"/>
+            <rect x="25" y="30" width="270" height="48" fill="rgba(147,197,253,0.16)" stroke="#93c5fd" stroke-width="1.6"/>
+            <path d="M 115 30 L 205 30 L 205 78 L 185 78 L 185 112 L 135 112 L 135 78 L 115 78 Z" fill="rgba(212,163,115,0.18)" stroke="#d4a373" stroke-width="1.6"/>
+            <circle cx="143" cy="45" r="4.5" fill="#d4a373" stroke="#f4f6f8" stroke-width="1"/>
+            <circle cx="177" cy="63" r="4.5" fill="#d4a373" stroke="#f4f6f8" stroke-width="1"/>
+            <circle cx="148" cy="95" r="4" fill="#e6ccb2" stroke="#f4f6f8" stroke-width="1"/>
+            <circle cx="172" cy="95" r="4" fill="#e6ccb2" stroke="#f4f6f8" stroke-width="1"/>
+            <line x1="143" y1="45" x2="72" y2="20" stroke="#d4a373" stroke-width="1"/>
+            <text x="12" y="17" fill="#e6ccb2" font-family="IBM Plex Mono" font-size="8.5">1/2"×8" THRU-BOLTS (STAGGERED)</text>
+            <text x="212" y="98" fill="#d4a373" font-family="IBM Plex Mono" font-size="8.5">12-GA T-PLATE</text>
+            <text x="32" y="58" fill="#93c5fd" font-family="IBM Plex Mono" font-size="9">(2) 2×10 HEADER</text>
+          </svg>
+        `
+      },
+      J3: {
+        code: 'J3 · EXTERIOR WALL ATTACHMENT',
+        title: 'Ledger Board Lag Pattern & Joist Hanger',
+        perJoint: 'Along House Wall',
+        hardware: [
+          { name: 'LedgerLok / 1/2"×5" Lag Screws', spec: '16" OC Staggered into Rim' },
+          { name: 'Simpson LUS28Z Joist Hanger', spec: '18-Ga ZMAX (1 per Rafter)' },
+          { name: 'Weather Flashing Tape', spec: 'Continuous Z-Flashing Cap' }
+        ],
+        steps: [
+          'Locate existing house rim joist; pre-drill 5/16" pilot holes through the ledger.',
+          'Install two 1/2"×5" lag screws per stud bay (staggered 2" from top and bottom edges).',
+          'Mount LUS28Z hangers flush to bottom of ledger using 10d×1.5" hanger nails.'
+        ],
+        svg: `
+          <svg viewBox="0 0 320 150" xmlns="http://www.w3.org/2000/svg">
+            <rect width="320" height="150" fill="#08101f"/>
+            <rect x="20" y="8" width="48" height="134" fill="rgba(148,163,184,0.12)" stroke="#64748b" stroke-width="1.2"/>
+            <text x="26" y="132" fill="#8a99ad" font-family="IBM Plex Mono" font-size="8" transform="rotate(-90 34,132)">HOUSE RIM JOIST</text>
+            <rect x="68" y="30" width="28" height="86" fill="rgba(147,197,253,0.18)" stroke="#93c5fd" stroke-width="1.6"/>
+            <path d="M 66 14 L 66 30 L 98 30 L 98 36" fill="none" stroke="#81b29a" stroke-width="2"/>
+            <text x="104" y="24" fill="#81b29a" font-family="IBM Plex Mono" font-size="8.5">Z-FLASHING DRIP CAP</text>
+            <line x1="28" y1="50" x2="102" y2="50" stroke="#e07a5f" stroke-width="3.5"/>
+            <line x1="28" y1="92" x2="102" y2="92" stroke="#e07a5f" stroke-width="3.5"/>
+            <rect x="96" y="34" width="165" height="68" fill="rgba(147,197,253,0.10)" stroke="#93c5fd" stroke-width="1.4"/>
+            <path d="M 96 62 L 122 62 L 122 104 L 96 104" fill="rgba(212,163,115,0.22)" stroke="#d4a373" stroke-width="1.6"/>
+            <circle cx="110" cy="76" r="2.5" fill="#d4a373"/>
+            <circle cx="110" cy="92" r="2.5" fill="#d4a373"/>
+            <text x="132" y="64" fill="#93c5fd" font-family="IBM Plex Mono" font-size="9">2×8 RAFTER</text>
+            <text x="132" y="94" fill="#d4a373" font-family="IBM Plex Mono" font-size="8.5">LUS28Z HANGER + NAILS</text>
+            <text x="132" y="128" fill="#e07a5f" font-family="IBM Plex Mono" font-size="8.5">1/2"×5" LAG SCREWS</text>
+          </svg>
+        `
+      },
+      J4: {
+        code: 'J4 · WIND UPLIFT TIE-DOWN',
+        title: 'Rafter Birdsmouth Seat & Hurricane Tie',
+        perJoint: 'Per Rafter Crossing',
+        hardware: [
+          { name: 'Simpson H2.5AZ Hurricane Tie', spec: '18-Ga ZMAX Uplift Clip' },
+          { name: '6" Structural Timber Screw', spec: '1/4" × 6" Countersunk' },
+          { name: 'Birdsmouth Seat Cut', spec: '1.5" Heel × 3.5" Bearing' }
+        ],
+        steps: [
+          'Notch 1.5" deep birdsmouth seat on bottom edge of 2×8 rafter so it locks over beam.',
+          'Position H2.5AZ hurricane clip straddling rafter face and inner 2×10 beam.',
+          'Drive five #9×1.5" connector screws into the beam and five into the rafter.'
+        ],
+        svg: `
+          <svg viewBox="0 0 320 150" xmlns="http://www.w3.org/2000/svg">
+            <rect width="320" height="150" fill="#08101f"/>
+            <rect x="115" y="68" width="54" height="68" fill="rgba(147,197,253,0.18)" stroke="#93c5fd" stroke-width="1.6"/>
+            <line x1="142" y1="68" x2="142" y2="136" stroke="#93c5fd" stroke-width="1" stroke-dasharray="3,2"/>
+            <path d="M 20 26 L 295 26 L 295 76 L 169 76 L 169 68 L 115 68 L 115 76 L 20 76 Z" fill="rgba(147,197,253,0.10)" stroke="#93c5fd" stroke-width="1.5"/>
+            <path d="M 169 48 L 185 48 L 185 108 L 169 108 Z" fill="rgba(212,163,115,0.24)" stroke="#d4a373" stroke-width="1.6"/>
+            <line x1="130" y1="18" x2="130" y2="104" stroke="#e07a5f" stroke-width="2.5" stroke-dasharray="4,1"/>
+            <rect x="125" y="15" width="10" height="4" fill="#e07a5f"/>
+            <text x="26" y="48" fill="#93c5fd" font-family="IBM Plex Mono" font-size="9">2×8 RAFTER OVERHANG</text>
+            <text x="193" y="88" fill="#d4a373" font-family="IBM Plex Mono" font-size="8.5">H2.5AZ HURRICANE CLIP</text>
+            <text x="193" y="104" fill="#8a99ad" font-family="IBM Plex Mono" font-size="8">1.5" BIRDSMOUTH NOTCH</text>
+            <text x="148" y="18" fill="#e07a5f" font-family="IBM Plex Mono" font-size="8.5">6" TIMBER SCREW</text>
+          </svg>
+        `
+      }
+    };
+
+    // =========================================================================
+    // 2. THREE.JS SCENE, CAMERA, RENDERER & REFINED ARCHITECTURAL MATERIALS
+    // =========================================================================
+    const container = document.getElementById('viewport-container');
+    const hotspotLayer = document.getElementById('hotspot-layer');
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 250);
+    camera.position.set(19, 13, 21);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.target.set(0, 4.5, 0);
+    controls.maxPolarAngle = Math.PI / 2 + 0.08;
+    controls.minDistance = 1.6;
+    controls.maxDistance = 55;
+
+    let camAnim = null;
+    function flyCameraTo(targetPos, lookAtPos, durationMs = 650) {
+      camAnim = {
+        startPos: camera.position.clone(),
+        endPos: targetPos.clone(),
+        startLook: controls.target.clone(),
+        endLook: lookAtPos.clone(),
+        startTime: performance.now(),
+        duration: durationMs
+      };
+    }
+
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.8);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xf8fafc, 1.25);
+    dirLight.position.set(18, 28, 22);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const rimLight = new THREE.DirectionalLight(0x93c5fd, 0.5);
+    rimLight.position.set(-20, 12, -16);
+    scene.add(rimLight);
+
+    // Architectural Blueprint Ground Grid (Subtle Slate & Soft Chalk Blue)
+    const gridHelper = new THREE.GridHelper(48, 48, 0x475569, 0x1e293b);
+    gridHelper.position.y = -0.02;
+    gridHelper.material.opacity = 0.42;
+    gridHelper.material.transparent = true;
+    scene.add(gridHelper);
+
+    // Refined Materials Library (No harsh neon cyan or loud yellow)
+    const mats = {
+      timber: new THREE.MeshStandardMaterial({
+        color: 0x1e324d,
+        roughness: 0.62,
+        metalness: 0.12,
+        transparent: true,
+        opacity: 0.92,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+      }),
+      timberSecondary: new THREE.MeshStandardMaterial({
+        color: 0x17263c,
+        roughness: 0.65,
+        metalness: 0.12,
+        transparent: true,
+        opacity: 0.90,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+      }),
+      wallContext: new THREE.MeshStandardMaterial({
+        color: 0x0f1829,
+        roughness: 0.88,
+        metalness: 0.05,
+        transparent: true,
+        opacity: 0.55
+      }),
+      concrete: new THREE.MeshStandardMaterial({
+        color: 0x334155,
+        roughness: 0.9,
+        metalness: 0.05,
+        transparent: true,
+        opacity: 0.85
+      }),
+      steelPlate: new THREE.MeshStandardMaterial({
+        color: 0x94a3b8,
+        roughness: 0.35,
+        metalness: 0.78
+      }),
+      boltGold: new THREE.MeshStandardMaterial({
+        color: 0xd4a373,
+        emissive: 0x4a3520,
+        emissiveIntensity: 0.35,
+        roughness: 0.3,
+        metalness: 0.82
+      }),
+      lagRed: new THREE.MeshStandardMaterial({
+        color: 0xe07a5f,
+        emissive: 0x5c2618,
+        emissiveIntensity: 0.35,
+        roughness: 0.32,
+        metalness: 0.78
+      }),
+      edgeCyan: new THREE.LineBasicMaterial({
+        color: 0x93c5fd,
+        transparent: true,
+        opacity: 0.58
+      }),
+      edgeBright: new THREE.LineBasicMaterial({
+        color: 0xd4a373,
+        transparent: true,
+        opacity: 0.82
+      }),
+      drillGuideLine: new THREE.LineDashedMaterial({
+        color: 0xe6ccb2,
+        dashSize: 0.18,
+        gapSize: 0.1,
+        transparent: true,
+        opacity: 0.75
+      })
+    };
+
+    const structureRoot = new THREE.Group();
+    scene.add(structureRoot);
+
+    let jointAnchors = {};
+
+    function createCADBox(w, h, d, material, edgeMat = mats.edgeCyan) {
+      const group = new THREE.Group();
+      const geom = new THREE.BoxGeometry(w, h, d);
+      const mesh = new THREE.Mesh(geom, material);
+      mesh.userData.isTimber = (material === mats.timber || material === mats.timberSecondary);
+      group.add(mesh);
+
+      const edges = new THREE.EdgesGeometry(geom);
+      const line = new THREE.LineSegments(edges, edgeMat);
+      group.add(line);
+      return group;
+    }
+
+    function createBoltAssembly(length, radius, axis = 'z', isLag = false, explodeDist = 0) {
+      const boltGroup = new THREE.Group();
+      const mat = isLag ? mats.lagRed : mats.boltGold;
+
+      const shankGeo = new THREE.CylinderGeometry(radius, radius, length, 12);
+      const shank = new THREE.Mesh(shankGeo, mat);
+
+      const headGeo = new THREE.CylinderGeometry(radius * 2.1, radius * 2.1, radius * 1.4, 6);
+      const head = new THREE.Mesh(headGeo, mat);
+      head.position.y = length / 2 + (radius * 0.7);
+
+      const washerGeo = new THREE.CylinderGeometry(radius * 2.8, radius * 2.8, radius * 0.4, 16);
+      const washer = new THREE.Mesh(washerGeo, mats.steelPlate);
+      washer.position.y = length / 2;
+
+      const inner = new THREE.Group();
+      inner.add(shank, head, washer);
+
+      if (!isLag) {
+        const nut = head.clone();
+        nut.position.y = -length / 2 - (radius * 0.7);
+        const washerBack = washer.clone();
+        washerBack.position.y = -length / 2;
+        inner.add(nut, washerBack);
+      }
+
+      if (axis === 'z') inner.rotation.x = Math.PI / 2;
+      if (axis === 'x') inner.rotation.z = -Math.PI / 2;
+
+      if (explodeDist > 0) {
+        if (axis === 'z') inner.position.z += explodeDist;
+        if (axis === 'x') inner.position.x += explodeDist;
+        if (axis === 'y') inner.position.y += explodeDist;
+
+        const pts = [new THREE.Vector3(0, 0, 0), inner.position.clone()];
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const dashLine = new THREE.Line(lineGeo, mats.drillGuideLine);
+        dashLine.computeLineDistances();
+        boltGroup.add(dashLine);
+      }
+
+      boltGroup.add(inner);
+      return boltGroup;
+    }
+
+    // =========================================================================
+    // 3. PARAMETRIC 3D STRUCTURE GENERATOR
+    // =========================================================================
+    function rebuildStructure() {
+      while (structureRoot.children.length > 0) {
+        structureRoot.remove(structureRoot.children[0]);
+      }
+
+      const W = state.width;
+      const D = state.depth;
+      const H = state.height;
+      const postThick = (state.postNominal - 0.5) / 12;
+      const beamH = 9.25 / 12;
+      const beamThick = 1.5 / 12;
+      const rafterH = 7.25 / 12;
+      const rafterThick = 1.5 / 12;
+      const ex = state.explode;
+
+      const isAttached = state.template !== 'freestanding-pergola';
+      const isSloped = state.template === 'lean-to-canopy';
+      const wallRise = isSloped ? 1.6 : 0;
+
+      const halfW = W / 2;
+      const halfD = D / 2;
+      const postInsetX = Math.min(1.5, W * 0.1);
+      const postXPositions = [-halfW + postInsetX, halfW - postInsetX];
+      const frontZ = halfD - 0.8;
+      const backZ = -halfD;
+
+      if (isAttached) {
+        const wallH = H + wallRise + 3.2;
+        const wallGroup = createCADBox(W + 4, wallH, 0.75, mats.wallContext);
+        wallGroup.position.set(0, wallH / 2, backZ - 0.375);
+        structureRoot.add(wallGroup);
+
+        const patioSlab = createCADBox(W + 2, 0.15, D + 1.5, mats.wallContext);
+        patioSlab.position.set(0, -0.075, 0.25);
+        structureRoot.add(patioSlab);
+      }
+
+      if (state.buildStep >= 1) {
+        const zRows = isAttached ? [frontZ] : [frontZ, backZ + 0.8];
+        zRows.forEach((pz) => {
+          postXPositions.forEach((px) => {
+            const pier = createCADBox(1.3, 1.2, 1.3, mats.concrete);
+            pier.position.set(px, -0.6, pz);
+            structureRoot.add(pier);
+
+            const baseGroup = new THREE.Group();
+            const standoff = createCADBox(postThick + 0.04, 0.08, postThick + 0.04, mats.steelPlate, mats.edgeBright);
+            standoff.position.y = 0.04;
+            baseGroup.add(standoff);
+
+            const flangeL = createCADBox(0.03, 0.48, postThick * 0.85, mats.steelPlate, mats.edgeBright);
+            flangeL.position.set(-(postThick / 2 + 0.02) - ex * 0.35, 0.26, 0);
+            const flangeR = createCADBox(0.03, 0.48, postThick * 0.85, mats.steelPlate, mats.edgeBright);
+            flangeR.position.set((postThick / 2 + 0.02) + ex * 0.35, 0.26, 0);
+            baseGroup.add(flangeL, flangeR);
+
+            const anchorBolt = createBoltAssembly(0.65, 0.045, 'y', true, ex * 0.8);
+            anchorBolt.position.set(0, 0.08, 0);
+            baseGroup.add(anchorBolt);
+
+            [-0.12, 0.12].forEach((sz) => {
+              const sdsL = createBoltAssembly(0.28, 0.025, 'x', true, -ex * 0.75);
+              sdsL.position.set(-postThick / 2, 0.28, sz);
+              const sdsR = createBoltAssembly(0.28, 0.025, 'x', true, ex * 0.75);
+              sdsR.position.set(postThick / 2, 0.28, sz);
+              baseGroup.add(sdsL, sdsR);
+            });
+
+            baseGroup.position.set(px, 0, pz);
+            structureRoot.add(baseGroup);
+          });
+        });
+      }
+
+      if (state.buildStep >= 2) {
+        const zRows = isAttached ? [frontZ] : [frontZ, backZ + 0.8];
+        zRows.forEach((pz) => {
+          postXPositions.forEach((px) => {
+            const postLift = ex * 0.45;
+            const postMesh = createCADBox(postThick, H, postThick, mats.timber);
+            postMesh.position.set(px, H / 2 + 0.08 + postLift, pz);
+            structureRoot.add(postMesh);
+          });
+        });
+      }
+
+      if (state.buildStep >= 3) {
+        const frontBeamY = H - beamH / 2 + 0.08 + ex * 0.85;
+        const beamZSpread = (postThick / 2 + beamThick / 2) + ex * 0.65;
+
+        const frontOuterBeam = createCADBox(W, beamH, beamThick, mats.timberSecondary);
+        frontOuterBeam.position.set(0, frontBeamY, frontZ + beamZSpread);
+        const frontInnerBeam = createCADBox(W, beamH, beamThick, mats.timberSecondary);
+        frontInnerBeam.position.set(0, frontBeamY, frontZ - beamZSpread);
+        structureRoot.add(frontOuterBeam, frontInnerBeam);
+
+        postXPositions.forEach((px) => {
+          const j2Group = new THREE.Group();
+          j2Group.position.set(px, H - beamH / 2 + 0.08 + ex * 0.65, frontZ);
+
+          const tStrapFront = createCADBox(0.75, beamH * 0.9, 0.025, mats.steelPlate, mats.edgeBright);
+          tStrapFront.position.set(0, 0, beamZSpread + beamThick / 2 + 0.02 + ex * 0.35);
+          const tStrapBack = createCADBox(0.75, beamH * 0.9, 0.025, mats.steelPlate, mats.edgeBright);
+          tStrapBack.position.set(0, 0, -(beamZSpread + beamThick / 2 + 0.02 + ex * 0.35));
+          j2Group.add(tStrapFront, tStrapBack);
+
+          const boltLen = postThick + beamThick * 2 + 0.14;
+          const b1 = createBoltAssembly(boltLen, 0.032, 'z', false, ex * 1.15);
+          b1.position.set(-0.11, 0.14, 0);
+          const b2 = createBoltAssembly(boltLen, 0.032, 'z', false, ex * 1.15);
+          b2.position.set(0.11, -0.12, 0);
+          j2Group.add(b1, b2);
+
+          structureRoot.add(j2Group);
+        });
+
+        if (isAttached) {
+          const ledgerY = H + wallRise - beamH / 2 + 0.08;
+          const ledgerZ = backZ + beamThick / 2 + ex * 0.55;
+          const ledger = createCADBox(W, beamH, beamThick, mats.timberSecondary);
+          ledger.position.set(0, ledgerY, ledgerZ);
+          structureRoot.add(ledger);
+
+          const numLags = Math.floor(W / 1.33);
+          for (let i = 0; i <= numLags; i++) {
+            const lx = -halfW + 0.5 + (i / numLags) * (W - 1.0);
+            const ly = ledgerY + (i % 2 === 0 ? 0.16 : -0.16);
+            const lag = createBoltAssembly(0.42, 0.03, 'z', true, ex * 0.95);
+            lag.position.set(lx, ly, ledgerZ + 0.05);
+            structureRoot.add(lag);
+          }
+        } else {
+          const backPosZ = backZ + 0.8;
+          const backOuter = createCADBox(W, beamH, beamThick, mats.timberSecondary);
+          backOuter.position.set(0, frontBeamY, backPosZ + beamZSpread);
+          const backInner = createCADBox(W, beamH, beamThick, mats.timberSecondary);
+          backInner.position.set(0, frontBeamY, backPosZ - beamZSpread);
+          structureRoot.add(backOuter, backInner);
+
+          postXPositions.forEach((px) => {
+            const boltLen = postThick + beamThick * 2 + 0.14;
+            const b1 = createBoltAssembly(boltLen, 0.032, 'z', false, -ex * 1.15);
+            b1.position.set(px - 0.11, frontBeamY + 0.14, backPosZ);
+            const b2 = createBoltAssembly(boltLen, 0.032, 'z', false, -ex * 1.15);
+            b2.position.set(px + 0.11, frontBeamY - 0.12, backPosZ);
+            structureRoot.add(b1, b2);
+          });
+        }
+      }
+
+      const rafterBaseY = H + 0.08 + rafterH / 2 + ex * 1.35;
+      const slopeAngle = isSloped ? Math.atan2(wallRise, D) : 0;
+
+      if (state.buildStep >= 4) {
+        const marginX = 0.65;
+        const usableW = W - marginX * 2;
+        for (let i = 0; i < state.rafterCount; i++) {
+          const rx = -halfW + marginX + (i / (state.rafterCount - 1)) * usableW;
+
+          const rafterLen = isAttached ? D + 1.2 : D + 1.6;
+          const rafterGroup = createCADBox(rafterThick, rafterH, rafterLen, mats.timber);
+
+          const midY = rafterBaseY + (isSloped ? wallRise / 2 : 0);
+          const midZ = isAttached ? 0.5 : 0;
+          rafterGroup.position.set(rx, midY, midZ);
+          rafterGroup.rotation.x = slopeAngle;
+          structureRoot.add(rafterGroup);
+
+          if (isAttached) {
+            const hangerY = H + wallRise - beamH / 2 + 0.08;
+            const hanger = createCADBox(rafterThick + 0.08, rafterH * 0.85, 0.22, mats.steelPlate, mats.edgeBright);
+            hanger.position.set(rx, hangerY, backZ + beamThick + 0.12 + ex * 0.85);
+            structureRoot.add(hanger);
+          }
+
+          const clip = createCADBox(0.03, 0.45, 0.22, mats.steelPlate, mats.edgeBright);
+          clip.position.set(rx + rafterThick / 2 + 0.02 + ex * 0.25, H + 0.08 + ex * 1.0, frontZ);
+          structureRoot.add(clip);
+
+          const topScrew = createBoltAssembly(0.55, 0.024, 'y', true, ex * 0.9);
+          topScrew.position.set(rx, rafterBaseY + rafterH / 2, frontZ);
+          structureRoot.add(topScrew);
+        }
+      }
+
+      if (state.buildStep >= 5) {
+        const purlinCount = Math.floor(D * 0.85);
+        const purlinH = 0.14;
+        for (let p = 0; p < purlinCount; p++) {
+          const frac = p / (purlinCount - 1);
+          const pz = backZ + 0.6 + frac * (D - 0.4);
+          const py = rafterBaseY + rafterH / 2 + purlinH / 2 + (isSloped ? (1 - frac) * wallRise : 0) + ex * 1.75;
+          const purlin = createCADBox(W + 0.6, purlinH, 0.14, mats.timberSecondary);
+          purlin.position.set(0, py, pz);
+          structureRoot.add(purlin);
+        }
+      }
+
+      const rightPostX = postXPositions[1];
+      jointAnchors = {
+        J1: {
+          id: 'J1',
+          label: 'J1 · Post Base Anchor',
+          worldPos: new THREE.Vector3(rightPostX, 0.35, frontZ),
+          camOffset: new THREE.Vector3(2.8, 1.4, 2.8)
+        },
+        J2: {
+          id: 'J2',
+          label: 'J2 · Post-to-Beam Bolts',
+          worldPos: new THREE.Vector3(rightPostX, H - 0.25, frontZ),
+          camOffset: new THREE.Vector3(2.9, 1.2, 3.1)
+        },
+        J3: {
+          id: 'J3',
+          label: isAttached ? 'J3 · Ledger Lag & Hanger' : 'J3 · Rear Beam Cap',
+          worldPos: new THREE.Vector3(rightPostX * 0.55, H + wallRise - 0.2, isAttached ? backZ + 0.25 : backZ + 0.8),
+          camOffset: new THREE.Vector3(2.5, 0.8, 3.2)
+        },
+        J4: {
+          id: 'J4',
+          label: 'J4 · Rafter Birdsmouth',
+          worldPos: new THREE.Vector3(0, H + 0.35, frontZ),
+          camOffset: new THREE.Vector3(2.6, 1.4, 2.7)
+        }
+      };
+
+      applyRenderMode();
+      syncHotspotDOM();
+      updateBOMAndMetrics();
+    }
+
+    // =========================================================================
+    // 4. RENDER MODES
+    // =========================================================================
+    function applyRenderMode() {
+      if (state.renderMode === 'blueprint') {
+        mats.timber.visible = true;
+        mats.timber.opacity = 0.90;
+        mats.timberSecondary.visible = true;
+        mats.timberSecondary.opacity = 0.88;
+        mats.edgeCyan.opacity = 0.58;
+      } else if (state.renderMode === 'wireframe') {
+        mats.timber.visible = false;
+        mats.timberSecondary.visible = false;
+        mats.edgeCyan.opacity = 0.92;
+      } else if (state.renderMode === 'xray') {
+        mats.timber.visible = true;
+        mats.timber.opacity = 0.16;
+        mats.timberSecondary.visible = true;
+        mats.timberSecondary.opacity = 0.16;
+        mats.edgeCyan.opacity = 0.38;
+      }
+    }
+
+    // =========================================================================
+    // 5. 2D FLOATING HOTSPOT PINS & ZOOM-TO-JOINT CONTROLLER
+    // =========================================================================
+    const pinElements = {};
+
+    function syncHotspotDOM() {
+      hotspotLayer.innerHTML = '';
+      Object.values(jointAnchors).forEach((anchor) => {
+        const pin = document.createElement('button');
+        pin.className = 'hotspot-pin' + (state.activeJoint === anchor.id ? ' active' : '');
+        pin.innerHTML = `<span class="pin-dot"></span><span>${anchor.label}</span>`;
+        pin.addEventListener('click', () => focusJoint(anchor.id, true));
+        hotspotLayer.appendChild(pin);
+        pinElements[anchor.id] = pin;
+      });
+    }
+
+    function updateHotspotPositions() {
+      const widthHalf = window.innerWidth / 2;
+      const heightHalf = window.innerHeight / 2;
+
+      Object.values(jointAnchors).forEach((anchor) => {
+        const pin = pinElements[anchor.id];
+        if (!pin) return;
+        const pos = anchor.worldPos.clone();
+        pos.project(camera);
+
+        if (pos.z > 1) {
+          pin.style.display = 'none';
+          return;
+        }
+        const x = (pos.x * widthHalf) + widthHalf;
+        const y = -(pos.y * heightHalf) + heightHalf;
+        pin.style.display = 'flex';
+        pin.style.left = `${x}px`;
+        pin.style.top = `${y}px`;
+      });
+    }
+
+    function focusJoint(jointId, animateCamera = true) {
+      state.activeJoint = jointId;
+
+      document.querySelectorAll('.joint-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.joint === jointId);
+      });
+      Object.entries(pinElements).forEach(([id, el]) => {
+        el.classList.toggle('active', id === jointId);
+      });
+
+      const spec = JOINT_SPECS[jointId];
+      document.getElementById('insp-code').textContent = spec.code;
+      document.getElementById('insp-title').textContent = spec.title;
+      document.getElementById('insp-per-joint').textContent = spec.perJoint;
+      document.getElementById('insp-schematic').innerHTML = spec.svg + '<span class="schematic-caption">Cross-Section Schematic</span>';
+
+      const hwList = document.getElementById('insp-hw-list');
+      hwList.innerHTML = spec.hardware.map(h => `
+        <div class="hw-item">
+          <span>${h.name}</span>
+          <span class="hw-spec">${h.spec}</span>
+        </div>
+      `).join('');
+
+      const stepsBox = document.getElementById('insp-steps');
+      stepsBox.innerHTML = spec.steps.map((s, idx) => `
+        <div class="drill-step">
+          <span class="drill-num">0${idx + 1}</span>
+          <span>${s}</span>
+        </div>
+      `).join('');
+
+      if (animateCamera && jointAnchors[jointId]) {
+        const anchor = jointAnchors[jointId];
+        const targetLook = anchor.worldPos.clone();
+        const targetCam = anchor.worldPos.clone().add(anchor.camOffset);
+        flyCameraTo(targetCam, targetLook, 650);
+
+        if (state.explode < 0.25) {
+          state.explode = 0.35;
+          document.getElementById('slider-explode').value = 35;
+          document.getElementById('val-explode').textContent = '35% (Separated)';
+          rebuildStructure();
+        }
+
+        document.getElementById('hud-camera-state').firstElementChild.textContent =
+          `View: Zoomed on ${jointId} — ${spec.title}`;
+      }
+    }
+
+    function resetCameraFullView() {
+      flyCameraTo(new THREE.Vector3(19, 13, 21), new THREE.Vector3(0, 4.5, 0), 650);
+      document.getElementById('hud-camera-state').firstElementChild.textContent =
+        'View: Full Structure Orbit';
+    }
+
+    // =========================================================================
+    // 6. DYNAMIC CUT LIST & FASTENER SCHEDULE CALCULATOR
+    // =========================================================================
+    function updateBOMAndMetrics() {
+      const isAttached = state.template !== 'freestanding-pergola';
+      const postCount = isAttached ? 2 : 4;
+      const beamCount = isAttached ? 2 : 4;
+      const lagCount = isAttached ? (Math.floor(state.width / 1.33) + 1) * 2 : 0;
+      const thruBoltCount = postCount * 4;
+      const hurricaneTieCount = state.rafterCount * (isAttached ? 1 : 2);
+      const hangerCount = isAttached ? state.rafterCount : 0;
+      const totalFasteners = postCount * 5 + thruBoltCount + lagCount + hurricaneTieCount * 2;
+
+      const ocInches = ((state.width - 1.3) * 12 / (state.rafterCount - 1)).toFixed(1);
+      document.getElementById('val-width').textContent = `${state.width.toFixed(1)} ft`;
+      document.getElementById('val-depth').textContent = `${state.depth.toFixed(1)} ft`;
+      document.getElementById('val-height').textContent = `${state.height.toFixed(1)} ft`;
+      document.getElementById('val-rafters').textContent = `${state.rafterCount} rafters (${ocInches}" OC)`;
+      document.getElementById('val-postsize').textContent = `${state.postNominal}×${state.postNominal} Nominal (${state.postNominal - 0.5}")`;
+      document.getElementById('hud-dims-summary').textContent = `${state.width.toFixed(1)}' W × ${state.depth.toFixed(1)}' D × ${state.height.toFixed(1)}' H`;
+      document.getElementById('bom-total-bolts').textContent = `${totalFasteners} fasteners`;
+
+      const rows = [
+        { part: `${state.postNominal}×${state.postNominal} Cedar / PT Posts`, spec: `Cut @ ${state.height.toFixed(1)} ft`, qty: `${postCount} pcs` },
+        { part: `2×10 Drop Header Beams`, spec: `Cut @ ${state.width.toFixed(1)} ft`, qty: `${beamCount} pcs` },
+        ...(isAttached ? [{ part: `2×10 Pressure-Treated Ledger`, spec: `Cut @ ${state.width.toFixed(1)} ft`, qty: `1 pc` }] : []),
+        { part: `2×8 Notched Rafters`, spec: `Cut @ ${(state.depth + 1.2).toFixed(1)} ft`, qty: `${state.rafterCount} pcs` },
+        { part: `Simpson ABA${state.postNominal}${state.postNominal}Z Post Bases`, spec: `5/8"×5" Wedge Anchor`, qty: `${postCount} sets` },
+        { part: `1/2" × 8" Galv Thru-Bolts`, spec: `9/16" Bore + Washers`, qty: `${thruBoltCount} pcs` },
+        ...(isAttached ? [
+          { part: `1/2" × 5" Ledger Lag Screws`, spec: `16" OC Staggered`, qty: `${lagCount} pcs` },
+          { part: `Simpson LUS28Z Joist Hangers`, spec: `18-Ga ZMAX`, qty: `${hangerCount} pcs` }
+        ] : []),
+        { part: `Simpson H2.5AZ Hurricane Ties`, spec: `+ 6" Timber Screws`, qty: `${hurricaneTieCount} sets` }
+      ];
+
+      document.getElementById('bom-tbody').innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.part}</td>
+          <td style="color:var(--text-muted); font-family:var(--font-mono); font-size:11px;">${r.spec}</td>
+          <td class="bom-qty">${r.qty}</td>
+        </tr>
+      `).join('');
+    }
+
+    // =========================================================================
+    // 7. NATURAL LANGUAGE SPEC PARSER & UI EVENT BINDINGS
+    // =========================================================================
+    function showToast(msg) {
+      const t = document.getElementById('toast-banner');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    document.getElementById('nl-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const raw = document.getElementById('nl-input').value.toLowerCase();
+
+      if (raw.includes('freestanding') || raw.includes('free-standing') || raw.includes('4-post') || raw.includes('gazebo')) {
+        state.template = 'freestanding-pergola';
+      } else if (raw.includes('veranda') || raw.includes('lean-to') || raw.includes('sloped') || raw.includes('canopy')) {
+        state.template = 'lean-to-canopy';
+      } else if (raw.includes('attached') || raw.includes('ledger') || raw.includes('pergola')) {
+        state.template = 'attached-pergola';
+      }
+
+      const dimMatch = raw.match(/(\d+(?:\.\d+)?)\s*(?:ft|')?\s*[x×by]\s*(\d+(?:\.\d+)?)/);
+      if (dimMatch) {
+        state.width = Math.min(24, Math.max(8, parseFloat(dimMatch[1])));
+        state.depth = Math.min(18, Math.max(8, parseFloat(dimMatch[2])));
+      }
+
+      const hMatch = raw.match(/(\d+(?:\.\d+)?)\s*(?:ft|')?\s*(?:height|high|tall|clearance)/);
+      if (hMatch) {
+        state.height = Math.min(12, Math.max(7.5, parseFloat(hMatch[1])));
+      }
+
+      const rMatch = raw.match(/(\d+)\s*rafter/);
+      if (rMatch) {
+        state.rafterCount = Math.min(15, Math.max(5, parseInt(rMatch[1], 10)));
+      }
+
+      if (raw.includes('4x4') || raw.includes('4×4')) state.postNominal = 4;
+      if (raw.includes('6x6') || raw.includes('6×6')) state.postNominal = 6;
+      if (raw.includes('8x8') || raw.includes('8×8')) state.postNominal = 8;
+
+      document.getElementById('slider-width').value = state.width;
+      document.getElementById('slider-depth').value = state.depth;
+      document.getElementById('slider-height').value = state.height;
+      document.getElementById('slider-rafters').value = state.rafterCount;
+      document.getElementById('slider-postsize').value = state.postNominal;
+      document.querySelectorAll('.tpl-card').forEach(c => {
+        c.classList.toggle('active', c.dataset.template === state.template);
+      });
+
+      rebuildStructure();
+      showToast(`Updated model: ${state.width}' × ${state.depth}' × ${state.height}' (${state.rafterCount} rafters)`);
+    });
+
+    document.querySelectorAll('.tpl-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        state.template = card.dataset.template;
+        document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        rebuildStructure();
+      });
+    });
+
+    document.getElementById('slider-width').addEventListener('input', (e) => {
+      state.width = parseFloat(e.target.value);
+      rebuildStructure();
+    });
+    document.getElementById('slider-depth').addEventListener('input', (e) => {
+      state.depth = parseFloat(e.target.value);
+      rebuildStructure();
+    });
+    document.getElementById('slider-height').addEventListener('input', (e) => {
+      state.height = parseFloat(e.target.value);
+      rebuildStructure();
+    });
+    document.getElementById('slider-rafters').addEventListener('input', (e) => {
+      state.rafterCount = parseInt(e.target.value, 10);
+      rebuildStructure();
+    });
+    document.getElementById('slider-postsize').addEventListener('input', (e) => {
+      state.postNominal = parseInt(e.target.value, 10);
+      rebuildStructure();
+    });
+    document.getElementById('slider-explode').addEventListener('input', (e) => {
+      const pct = parseInt(e.target.value, 10);
+      state.explode = pct / 100;
+      document.getElementById('val-explode').textContent = pct === 0 ? '0% (Assembled)' : `${pct}% (Separated)`;
+      rebuildStructure();
+    });
+
+    document.querySelectorAll('.mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.renderMode = btn.dataset.render;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyRenderMode();
+      });
+    });
+
+    document.querySelectorAll('.joint-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        focusJoint(btn.dataset.joint, true);
+      });
+    });
+
+    document.getElementById('btn-reset-camera').addEventListener('click', resetCameraFullView);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') resetCameraFullView();
+    });
+
+    document.querySelectorAll('#build-stepper .step-pill').forEach((pill) => {
+      pill.addEventListener('click', () => {
+        state.buildStep = parseInt(pill.dataset.step, 10);
+        document.querySelectorAll('#build-stepper .step-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        rebuildStructure();
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // =========================================================================
+    // 8. INITIALIZATION & ANIMATION LOOP
+    // =========================================================================
+    rebuildStructure();
+    focusJoint('J2', false);
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      if (camAnim) {
+        const t = Math.min(1, (now - camAnim.startTime) / camAnim.duration);
+        const ease = 1 - Math.pow(1 - t, 3);
+        camera.position.lerpVectors(camAnim.startPos, camAnim.endPos, ease);
+        controls.target.lerpVectors(camAnim.startLook, camAnim.endLook, ease);
+        if (t >= 1) camAnim = null;
+      }
+
+      controls.update();
+      updateHotspotPositions();
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
