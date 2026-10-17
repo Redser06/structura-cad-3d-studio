@@ -1,37 +1,24 @@
-# StructuraCAD — Exterior Structural & Joinery Studio
+# StructuraCAD — Exterior & Garden 3D Structural Platform
 
-Interactive 3D blueprint and joinery studio for residential property exterior alterations (attached patio pergolas, freestanding pergolas, and sloped lean-to verandas). Built around a **"Zoom-to-Understand-to-Build"** workflow: describe your build or dial in measurements, inspect the 3D blueprint, explode structural connections, and zoom directly into joints (`J1`–`J4`) to see every bolt, lag screw, bracket, pilot bit size, and cut length.
+End-to-end 3D blueprint, joinery dissection, and modular garden property builder for residential exterior alterations.
 
 ## Live Demo
 
 - **Preview Channel URL:** https://rapid-prototyping-4134c--structura-cad-hniefkz2.web.app
 - **Main Firebase URL:** https://rapid-prototyping-4134c.web.app
 
-## Features
+## Complete User Journey
 
-1. **Natural Language + Parametric Envelope Controls**
-   - Describe your structure in plain English (e.g., `16x12 attached pergola, 10ft height, 6x6 posts, 11 rafters`) or use interactive sliders for Span Width, Projection Depth, Clearance Height, Rafter Count, and Post Timber Section (`4×4`, `6×6`, `8×8`).
-   - Switch between 3 presets: **Attached Ledger Pergola** (with house exterior wall and slab context), **Freestanding 4-Post Pergola**, and **Sloped Lean-To Veranda**.
-
-2. **Refined Architectural Blueprint Palette & Three Render Modes**
-   - **Blueprint Shaded:** Deep blueprint navy canvas (`#070d19` to `#101f36`) with muted slate timber, warm brushed brass hardware (`#d4a373`), and soft chalk-blue CAD edges (`#93c5fd`).
-   - **Wireframe:** Pure technical blueprint linework.
-   - **X-Ray Fasteners:** Ghosts all timber members to 16% opacity so internal carriage bolts, concrete expansion anchors, and ledger lag screws are clearly visible inside the wood.
-
-3. **Zoom-to-Understand Joint Dissection (`J1`–`J4`)**
-   - **J1 · Foundation:** Simpson `ABA66Z` 1" moisture standoff base, `5/8" × 5"` concrete wedge expansion anchor, and four `1/4" × 3"` SDS heavy structural screws.
-   - **J2 · Header:** Notched post-to-double-beam (`2×10`) sandwich connection with 12-gauge steel T-straps and four staggered `1/2" × 8"` galvanized thru-bolts.
-   - **J3 · House Wall:** Pressure-treated `2×10` ledger with 16" OC staggered `1/2" × 5"` lag screws into the rim joist, continuous Z-flashing drip cap, and Simpson `LUS28Z` joist hangers.
-   - **J4 · Roof Seat:** `1.5"` birdsmouth seat cut, Simpson `H2.5AZ` hurricane uplift clip, and `6"` countersunk structural timber screw.
-   - Clicking any joint pin smoothly flies the 3D camera to that interface, cracks open the exploded view along dashed bolt insertion axes, and displays a 2D cross-section schematic with pilot bore and torque specs.
-
-4. **5-Stage Build Sequencer & Live Cut/Fastener BOM**
-   - Step through **1. Footings → 2. Posts → 3. Ledger & Beams → 4. Rafters → 5. Shade Lath** and view the live-calculated lumber cut list and fastener schedule.
-
-## Running Locally
-
-No build step required — `index.html` is a self-contained ES module application using Three.js (`v0.160.0`). Serve with any static HTTP server:
-
-```bash
-python3 -m http.server 8080
-```
+1. **Workspace Sign-In (`Login`)**
+   - Configure your Builder / Property Owner workspace and Garden Plot dimensions (e.g., `Backyard Patio & South Garden (42ft × 36ft)`).
+2. **Project Tracker & Modular 3D Garden World Composer (`01 · Projects & Garden World`)**
+   - Track multiple exterior and garden projects (Main Patio Attached Pergola, South Lawn Freestanding Pergola, Outdoor Kitchen Lean-To Veranda, Cedar Pergola Arbour & Raised Beds).
+   - Check **"Include in 3D Garden World"** on any combination of project cards and click **Launch Combined 3D World** to bring all selected structures together on a shared 3D property plot.
+3. **Explain Project + Multimodal Sketch & Image Parser (`02 · Explain & Sketch Intake`)**
+   - Describe your project in natural language or upload an inspiration photo / hand-drawn elevation sketch.
+   - Includes an interactive **Blueprint Sketch Pad** with sample architectural sketches (`Attached Pergola`, `4-Post + Planters`, `Sloped Veranda`) and a contour vision analyzer that extracts span width, clearance height, rafter count, and hardware requirements into a 3D model.
+4. **3D Build, Enhance/Tweak & Joinery Inspector (`03 · 3D Studio & Joinery`)**
+   - Switch seamlessly between **Single Structure** and **Modular Garden World** views, and position individual garden modules on the property grid (`X / Z` plot offset sliders).
+   - Inspect **J1–J4 Joint Pins** (`J1` Foundation Standoff Anchor, `J2` Post-to-Double-Beam Thru-Bolts, `J3` House Wall Ledger & Joist Hanger, `J4` Rafter Birdsmouth & Hurricane Tie) with 0–100% Explode sliders, **X-Ray Fasteners** mode, and 2D cross-section schematics.
+5. **Deploy, Export & Share Hub (`04 · Deploy, Export & Share`)**
+   - Copy a state-encoded shareable 3D builder link, download the **Cut List & Simpson Fastener CSV**, capture a **3D WebGL Blueprint PNG**, or export the **Modular Garden World JSON**.
