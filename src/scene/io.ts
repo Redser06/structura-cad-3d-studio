@@ -2,6 +2,7 @@ import { ZodError } from 'zod'
 import { SceneImportError } from './errors'
 import { migrateToLatest } from './migrations'
 import {
+  SCENE_LIMITS,
   SCHEMA_VERSION,
   formatZodError,
   isModuleType,
@@ -31,7 +32,8 @@ function asImportError(error: unknown): SceneImportError {
 
 /**
  * Parse JSON text into a World. This never evaluates the file: JSON.parse
- * plus the schema only. Bounds errors reject the file. Overlap is a warning.
+ * plus the schema only. Duplicate ids and hard caps reject the file.
+ * Site placement and overlap are warnings, so an older export still loads.
  */
 export function importWorldJson(text: string): ImportResult {
   let data: unknown
@@ -163,14 +165,17 @@ function restored(world: World, view: ShareView): HashDecodeResult {
     status: 'restored',
     world,
     view: { activeModuleId: active, worldMode: view.worldMode },
-    // Share links restore a schema-valid scene even when placement is invalid.
-    // File import still rejects bounds errors. The issues are reported either way.
+    // A schema-valid share restores even when placement is a warning.
+    // Values outside the hard caps never reach this function.
     warnings: issues,
   }
 }
 
 export function decodeShareHash(hash: string): HashDecodeResult {
   if (!hash || hash === '#') return { status: 'empty' }
+  if (hash.length > SCENE_LIMITS.maxShareHashChars) {
+    return { status: 'error', message: 'Share link is larger than 64 KB and was not opened.' }
+  }
 
   try {
     if (hash.startsWith('#scene=')) {

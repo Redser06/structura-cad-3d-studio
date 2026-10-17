@@ -56,17 +56,34 @@ Lengths inside a World are in that world's `units`. New scenes, including the se
 
 ### Validation
 
-- A module footprint (parametric width × depth, not rafter overhang) must lie inside the site rectangle. That is an **error**.
+Hard caps reject a document before it is built or decoded:
+
+- at most 50 modules
+- `rafterCount` at most 30
+- width, depth, height, and the site at most 100 ft (30.48 m when `units` is metric)
+- `|x|` and `|z|` at most 500 ft (152.4 m when metric)
+
+Soft checks run after that:
+
+- A footprint outside the site is a **warning**. Older slider positions such as x = 18 with a 24 ft width still load.
 - Overlapping footprints are a **warning**.
 - Duplicate ids are an **error**.
 
-JSON import parses with `JSON.parse` and Zod, then runs validation. It never evaluates file contents. Bounds and duplicate-id errors reject the file. Overlap is returned and the world is kept.
+JSON import parses with `JSON.parse` and Zod, then runs validation. It never evaluates file contents. Duplicate ids and hard caps reject the file. Soft bounds and overlap are returned and the world is kept. The import backs up `structuracad_world_v1` and `structuracad_projects_v2` before it writes, and a failed migration does not write. There is no confirm dialog yet; Gemini can gate `importWorldReplacingStored` later.
 
-A share link (`#scene=` plus base64url JSON, validated by the same schema) restores the world even if placement fails validation, and the app reports the issues. The older `#tpl=&w=&d=` links are accepted by turning them into a one-module imperial world and running that through the schema.
+A share link opens **read-only**. It does not autosave, and the first edit does not replace stored projects or delete the v2 key. The existing toast says the scene is not saved. `#scene=` payloads larger than 64 KB are rejected before decode. A link that fails the hard caps is not opened. A link that only fails soft placement still opens, read-only, with a short toast (duplicate messages are collapsed and the list is capped). The older `#tpl=&w=&d=` links become a one-module imperial world through the same schema.
+
+`window.structuracad.saveSharedToProjects()` adds the open share onto the stored world (colliding ids are renamed, the stored modules stay). Gemini still needs to add the button.
+
+The share hash currently carries **every** module, including names, zones, and statuses, not only the active structure or the modules on the plot. A later share could send only those.
+
+Metric lengths are stored on the same 0.001 ft grid the screen uses, so saving again does not move them by a fraction of a millimetre.
 
 ### Legacy projects
 
-`localStorage` key `structuracad_projects_v2` is read only when `structuracad_world_v1` is absent. Those rows are feet, so the migrated world is `units: 'imperial'` and the numbers are copied unchanged. `zone`, `status`, and `inWorld` land in `meta`. After a successful save the app writes v1 and drops the v2 key.
+`localStorage` key `structuracad_projects_v2` is read only when `structuracad_world_v1` is absent. Those rows are feet, so the migrated world is `units: 'imperial'` and the numbers are copied unchanged. `zone`, `status`, and `inWorld` land in `meta`. A row that does not fit the schema is copied to `structuracad_projects_v2_quarantine` and left out of the world. If every row fails, the screen does not substitute the demo garden, and nothing is saved over the key.
+
+The first verified save copies v2 to `structuracad_projects_v2_backup` (and v1 to `structuracad_world_v1_backup` when it already exists). v2 is removed only after the new v1 value is read back and parsed. A failed write restores the previous v1 value and leaves v2 in place.
 
 `src/scene/migrations.ts` is the place for later versions. Version 1 is the first published shape, so the chain is empty. A document with `schemaVersion` greater than 1 is rejected. A lower version fails until a step is registered.
 
@@ -90,3 +107,4 @@ These strings are unchanged on purpose:
 - Nothing on screen says the model is illustrative rather than engineered. The docs note above is the engineering record; the visible disclaimer still needs a design pass.
 - The dimension section is labeled "Imperial (ft)". Data defaults to metric. The display switch is not in this change.
 - There is no rotation slider and no visible Import button. Dropping a `.json` file on the existing "Full 3D Property World JSON" card imports through the schema.
+- There is no "Save to my projects" button. `window.structuracad.saveSharedToProjects()` adds a read-only share without replacing stored projects. A confirm step before import replace is also still Gemini's.

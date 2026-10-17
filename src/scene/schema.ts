@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { METERS_PER_FOOT } from './units'
 
 export const SCHEMA_VERSION = 1 as const
 
@@ -16,6 +17,25 @@ export type PostNominal = (typeof POST_NOMINALS)[number]
 
 export type UnitSystem = 'metric' | 'imperial'
 
+/** Hard sanity caps. Soft site placement is a separate warning. */
+export const SCENE_LIMITS = {
+  maxModules: 50,
+  maxRafterCount: 30,
+  maxDimensionFeet: 100,
+  maxOffsetFeet: 500,
+  maxShareHashChars: 64 * 1024,
+} as const
+
+const LIMIT_EPSILON = 1e-6
+
+export function maxLengthInUnits(feet: number, units: UnitSystem): number {
+  return units === 'metric' ? feet * METERS_PER_FOOT : feet
+}
+
+function withinLimit(value: number, max: number): boolean {
+  return Math.abs(value) <= max + LIMIT_EPSILON
+}
+
 const postNominalSchema = z.union([z.literal(4), z.literal(6), z.literal(8)])
 
 const dimensionParamsSchema = z
@@ -23,7 +43,7 @@ const dimensionParamsSchema = z
     width: z.number().finite().positive(),
     depth: z.number().finite().positive(),
     height: z.number().finite().positive(),
-    rafterCount: z.number().int().positive(),
+    rafterCount: z.number().int().positive().max(SCENE_LIMITS.maxRafterCount),
     postNominal: postNominalSchema,
   })
   .strict()
@@ -75,9 +95,46 @@ export const worldSchema = z
         depth: z.number().finite().positive(),
       })
       .strict(),
-    modules: z.array(moduleSchema),
+    modules: z.array(moduleSchema).max(SCENE_LIMITS.maxModules),
   })
   .strict()
+  .superRefine((world, ctx) => {
+    const maxDim = maxLengthInUnits(SCENE_LIMITS.maxDimensionFeet, world.units)
+    const maxOffset = maxLengthInUnits(SCENE_LIMITS.maxOffsetFeet, world.units)
+    const dims: Array<['width' | 'depth', number]> = [
+      ['width', world.site.width],
+      ['depth', world.site.depth],
+    ]
+    for (const [key, value] of dims) {
+      if (!withinLimit(value, maxDim)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['site', key],
+          message: `${key} exceeds ${SCENE_LIMITS.maxDimensionFeet} ft`,
+        })
+      }
+    }
+    world.modules.forEach((module, index) => {
+      for (const key of ['width', 'depth', 'height'] as const) {
+        if (!withinLimit(module.params[key], maxDim)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['modules', index, 'params', key],
+            message: `${key} exceeds ${SCENE_LIMITS.maxDimensionFeet} ft`,
+          })
+        }
+      }
+      for (const key of ['x', 'z'] as const) {
+        if (!withinLimit(module.transform[key], maxOffset)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['modules', index, 'transform', key],
+            message: `${key} exceeds ${SCENE_LIMITS.maxOffsetFeet} ft from the origin`,
+          })
+        }
+      }
+    })
+  })
 
 export const shareViewSchema = z
   .object({

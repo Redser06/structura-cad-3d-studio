@@ -7,10 +7,16 @@ import { applyRenderMode, createStructureMaterials, sharedMaterialSet, type Rend
 import { createCADBox } from './engine/primitives'
 import { INTAKE_PARSE_BASELINE, parseSpecification } from './parser/parseSpecification'
 import { displayProjectsToWorld, worldToDisplayProjects, type DisplayProject } from './scene/display'
-import { encodeShareHash, importWorldJson } from './scene/io'
+import { encodeShareHash } from './scene/io'
 import { isModuleType, type ModuleType, type PostNominal, type UnitSystem, type World } from './scene/schema'
 import { lengthToFeet } from './scene/units'
-import { LEGACY_PROJECTS_KEY, resolveInitialScene, saveWorld } from './storage/storage'
+import { summarizeSceneIssues } from './scene/validate'
+import {
+  commitScene,
+  importWorldReplacingStored,
+  resolveInitialScene,
+  saveSharedToProjects as persistSharedScene,
+} from './storage/storage'
 import { JOINT_SPECS } from './ui/jointSpecs'
 import {
   renderBomTableHtml,
@@ -80,14 +86,39 @@ function currentWorld(): World {
 }
 
 function persistWorld(): void {
-  if (!session.persist) return
   try {
-    saveWorld(localStorage, currentWorld())
-    localStorage.removeItem(LEGACY_PROJECTS_KEY)
+    commitScene(localStorage, currentWorld(), session.persist)
   } catch {
-    // Private mode or a full quota should not take down the studio.
+    // A failed write leaves the legacy key in place. Don't take down the studio.
   }
 }
+
+function saveSharedToProjects(): string {
+  try {
+    const result = persistSharedScene(localStorage, currentWorld(), state.activeProjectId)
+    session.persist = true
+    session.units = result.world.units
+    session.site = { width: result.world.site.width, depth: result.world.site.depth }
+    replaceProjects(worldToDisplayProjects(result.world), result.activeModuleId, state.worldMode)
+    showToast(result.message)
+    return result.message
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Shared scene was not saved.'
+    showToast(message)
+    return message
+  }
+}
+
+declare global {
+  interface Window {
+    structuracad: {
+      /** Adds the open share onto stored projects. No button yet. */
+      saveSharedToProjects: () => string
+    }
+  }
+}
+
+window.structuracad = { saveSharedToProjects }
 
 function syncActiveProjectFromState(): void {
   const project = projects.find((item) => item.id === state.activeProjectId)
@@ -514,10 +545,10 @@ function replaceProjects(next: DisplayProject[], activeId: string, worldMode: bo
   if (state.currentView === 'export') updateShareUrlDisplay()
 }
 
-function adoptWorld(world: World, activeId: string, worldMode: boolean): void {
+function adoptWorld(world: World, activeId: string, worldMode: boolean, persist: boolean): void {
   session.units = world.units
   session.site = { width: world.site.width, depth: world.site.depth }
-  session.persist = true
+  session.persist = persist
   replaceProjects(worldToDisplayProjects(world), activeId, worldMode)
 }
 
@@ -975,13 +1006,15 @@ if (exportJsonCard) {
     if (!file) return
     void file.text().then((text: string) => {
       try {
-        const imported = importWorldJson(text)
-        adoptWorld(imported.world, imported.world.modules[0]?.id ?? state.activeProjectId, state.worldMode)
-        if (imported.warnings.length > 0) {
-          showToast(`Imported with warnings: ${imported.warnings.map((issue) => issue.message).join(' ')}`)
-        } else {
-          showToast('Imported garden world JSON')
-        }
+        const imported = importWorldReplacingStored(localStorage, text)
+        adoptWorld(
+          imported.world,
+          imported.world.modules[0]?.id ?? state.activeProjectId,
+          state.worldMode,
+          true,
+        )
+        const summary = summarizeSceneIssues(imported.warnings)
+        showToast(summary ? `Imported with warnings: ${summary}` : 'Imported garden world JSON')
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Invalid scene file.'
         showToast(message)
@@ -1001,10 +1034,12 @@ focusJoint('J2', false)
 switchView('dashboard')
 updateWorldModeButtons()
 
-if (resolved.hashStatus === 'error' && resolved.hashMessage) showToast(resolved.hashMessage)
-else if (resolved.hashMessage) showToast(resolved.hashMessage)
-else if (resolved.warnings.length > 0) {
-  showToast(resolved.warnings.map((issue) => issue.message).join(' '))
+if (resolved.hashStatus === 'restored') {
+  const summary = summarizeSceneIssues(resolved.warnings)
+  const lead = 'Opened a shared scene. It is not saved to your projects.'
+  showToast(summary ? `${lead} ${summary}` : lead)
+} else if (resolved.hashMessage) {
+  showToast(resolved.hashMessage)
 }
 
 function animate(now: number): void {

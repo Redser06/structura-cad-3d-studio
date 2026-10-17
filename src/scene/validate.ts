@@ -2,6 +2,8 @@ import type { SceneModule, World } from './schema'
 
 export type SceneIssueCode = 'out-of-bounds' | 'overlap' | 'duplicate-id'
 
+const SUMMARY_SAMPLES = 3
+
 export interface SceneIssue {
   severity: 'error' | 'warning'
   code: SceneIssueCode
@@ -81,9 +83,10 @@ export function footprintsOverlap(a: Vec2[], b: Vec2[]): boolean {
 }
 
 /**
- * Site bounds are errors. Overlap is a warning.
- * The site rectangle is centered on the origin, matching the garden plot.
- * The footprint is the parametric width × depth, not rafter overhang.
+ * Duplicate ids are errors. Overlap and site placement are warnings, so an
+ * older export whose sliders put a module outside the plot still loads.
+ * The site rectangle is centered on the origin. The footprint is the
+ * parametric width × depth, not rafter overhang.
  */
 export function validateWorld(world: World): SceneIssue[] {
   const issues: SceneIssue[] = []
@@ -104,7 +107,7 @@ export function validateWorld(world: World): SceneIssue[] {
     corners.set(module.id, footprint)
     if (!insideSite(footprint, world.site)) {
       issues.push({
-        severity: 'error',
+        severity: 'warning',
         code: 'out-of-bounds',
         message: `"${module.name}" sits outside the site (${world.site.width} × ${world.site.depth} ${world.units}).`,
         moduleIds: [module.id],
@@ -132,4 +135,26 @@ export function validateWorld(world: World): SceneIssue[] {
   }
 
   return issues
+}
+
+/** Dedupe identical messages and cap how many of each kind a toast will show. */
+export function summarizeSceneIssues(issues: SceneIssue[]): string {
+  const groups = new Map<SceneIssueCode, string[]>()
+  for (const issue of issues) {
+    const messages = groups.get(issue.code) ?? []
+    if (!messages.includes(issue.message)) messages.push(issue.message)
+    groups.set(issue.code, messages)
+  }
+  const parts: string[] = []
+  for (const [code, messages] of groups) {
+    if (messages.length === 1) {
+      parts.push(messages[0]!)
+      continue
+    }
+    const shown = messages.slice(0, SUMMARY_SAMPLES)
+    const extra = messages.length - shown.length
+    const noun = code === 'overlap' ? 'overlaps' : code === 'out-of-bounds' ? 'out-of-bounds' : 'duplicate ids'
+    parts.push(`${messages.length} ${noun}: ${shown.join(' ')}${extra > 0 ? ` (+${extra} more)` : ''}`)
+  }
+  return parts.join(' ')
 }

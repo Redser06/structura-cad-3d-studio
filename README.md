@@ -27,7 +27,7 @@ Earlier previews were published on that shared project (`https://rapid-prototypi
 2. **Project tracker.** The seeded garden has four structures. Check **Include in 3D Garden World** and launch the combined view.
 3. **Explain and sketch.** The text parser reads dimensions from the description. The sketch control is a **heuristic placeholder** (a bright-pixel bounding box). It is not a vision model. The on-screen wording still says "vision"; changing that copy is a Gemini follow-up.
 4. **3D studio.** Single structure or the modular garden. Joint pins J1–J4, explode, and the cut list. In the garden view the cut list includes every module on the plot.
-5. **Export.** The share link restores a schema v1 scene from `location.hash`. JSON download and drop-to-import use the same schema. CSV and PNG match the previous actions.
+5. **Export.** A share link opens a schema v1 scene read-only. It does not overwrite saved projects. JSON download and drop-to-import use the same schema. CSV and PNG match the previous actions.
 
 ## Scene data
 

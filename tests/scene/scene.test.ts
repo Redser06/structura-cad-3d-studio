@@ -6,9 +6,21 @@ import { SceneImportError } from '../../src/scene/errors'
 import { decodeShareHash, encodeShareHash, exportWorldJson, importWorldJson } from '../../src/scene/io'
 import { migrateToLatest, migrateV2Projects } from '../../src/scene/migrations'
 import { worldSchema, type LegacyProjectV2 } from '../../src/scene/schema'
-import { feetToMeters, feetToWorldLength, lengthToFeet } from '../../src/scene/units'
-import { moduleFootprintCorners, validateWorld } from '../../src/scene/validate'
-import { resolveInitialScene, saveWorld, WORLD_STORAGE_KEY, LEGACY_PROJECTS_KEY, type StorageLike } from '../../src/storage/storage'
+import { SCENE_LIMITS, maxLengthInUnits } from '../../src/scene/schema'
+import { feetToMeters, feetToWorldLength, lengthToFeet, metersToFeet } from '../../src/scene/units'
+import { moduleFootprintCorners, summarizeSceneIssues, validateWorld } from '../../src/scene/validate'
+import {
+  commitScene,
+  importWorldReplacingStored,
+  LEGACY_BACKUP_KEY,
+  LEGACY_PROJECTS_KEY,
+  LEGACY_QUARANTINE_KEY,
+  resolveInitialScene,
+  saveSharedToProjects,
+  saveWorld,
+  WORLD_STORAGE_KEY,
+  type StorageLike,
+} from '../../src/storage/storage'
 
 function memory(initial: Record<string, string> = {}): StorageLike & { dump: () => Record<string, string> } {
   const data = new Map(Object.entries(initial))
@@ -120,6 +132,25 @@ describe('units', () => {
     }
     expect(lengthToFeet(14.0004, 'imperial')).toBe(14.0004)
   })
+
+  it('re-saves metric lengths on the same 0.001 ft grid', () => {
+    const offGrid = feetToWorldLength(14.0004, 'metric')
+    expect(metersToFeet(offGrid)).toBe(14)
+    expect(feetToMeters(metersToFeet(offGrid))).toBe(offGrid)
+
+    for (let thousandths = -500_000; thousandths <= 500_000; thousandths += 50) {
+      const feet = thousandths / 1000
+      const stored = feetToMeters(feet)
+      const once = feetToMeters(metersToFeet(stored))
+      const twice = feetToMeters(metersToFeet(once))
+      expect(twice).toBe(once)
+      expect(once).toBe(stored)
+    }
+
+    const world = createDefaultWorld()
+    const again = displayProjectsToWorld(worldToDisplayProjects(world), world.units, world.site)
+    expect(again).toEqual(world)
+  })
 })
 
 describe('validation', () => {
@@ -153,8 +184,18 @@ describe('validation', () => {
       site,
       modules: [{ ...module, transform: { x: 20, z: 0, rotY: 0 }, name: 'Edge' }],
     })
-    expect(validateWorld(outside).some((issue) => issue.code === 'out-of-bounds' && issue.severity === 'error')).toBe(true)
-    expect(() => importWorldJson(JSON.stringify(outside))).toThrow(/outside the site/)
+    expect(validateWorld(outside).some((issue) => issue.code === 'out-of-bounds' && issue.severity === 'warning')).toBe(true)
+    const importedOutside = importWorldJson(JSON.stringify(outside))
+    expect(importedOutside.warnings.some((issue) => issue.code === 'out-of-bounds')).toBe(true)
+    expect(importedOutside.world.modules[0]?.name).toBe('Edge')
+
+    const sliderOutside = worldSchema.parse({
+      schemaVersion: 1,
+      units: 'imperial',
+      site,
+      modules: [{ ...module, params: { ...module.params, width: 24 }, transform: { x: 18, z: 0, rotY: 0 }, name: 'Slider' }],
+    })
+    expect(importWorldJson(JSON.stringify(sliderOutside)).warnings.some((issue) => issue.code === 'out-of-bounds')).toBe(true)
 
     const touching = worldSchema.parse({
       schemaVersion: 1,
@@ -195,9 +236,88 @@ describe('validation', () => {
     expect(corner.z).toBeCloseTo(local.z, 8)
   })
 
+  it('rejects documents outside the hard caps', () => {
+    const module = {
+      id: 'a',
+      type: 'freestanding-pergola' as const,
+      name: 'A',
+      params: { width: 10, depth: 10, height: 9, rafterCount: 6, postNominal: 6 as const },
+      transform: { x: 0, z: 0, rotY: 0 },
+    }
+    expect(worldSchema.safeParse({
+      schemaVersion: 1,
+      units: 'imperial',
+      site: { width: 42, depth: 36 },
+      modules: [{ ...module, params: { ...module.params, rafterCount: SCENE_LIMITS.maxRafterCount + 1 } }],
+    }).success).toBe(false)
+    expect(worldSchema.safeParse({
+      schemaVersion: 1,
+      units: 'imperial',
+      site: { width: SCENE_LIMITS.maxDimensionFeet, depth: 36 },
+      modules: [{ ...module, params: { ...module.params, width: SCENE_LIMITS.maxDimensionFeet } }],
+    }).success).toBe(true)
+    expect(worldSchema.safeParse({
+      schemaVersion: 1,
+      units: 'metric',
+      site: { width: maxLengthInUnits(SCENE_LIMITS.maxDimensionFeet, 'metric'), depth: 10 },
+      modules: [{ ...module, params: { ...module.params, width: maxLengthInUnits(101, 'metric') } }],
+    }).success).toBe(false)
+    expect(worldSchema.safeParse({
+      schemaVersion: 1,
+      units: 'imperial',
+      site: { width: 42, depth: 36 },
+      modules: [{ ...module, transform: { x: SCENE_LIMITS.maxOffsetFeet, z: -SCENE_LIMITS.maxOffsetFeet, rotY: 0 } }],
+    }).success).toBe(true)
+    expect(worldSchema.safeParse({
+      schemaVersion: 1,
+      units: 'metric',
+      site: { width: 20, depth: 20 },
+      modules: [{ ...module, transform: { x: maxLengthInUnits(SCENE_LIMITS.maxOffsetFeet, 'metric') + 1, z: 0, rotY: 0 } }],
+    }).success).toBe(false)
+    expect(worldSchema.safeParse({
+      schemaVersion: 1,
+      units: 'imperial',
+      site: { width: 42, depth: 36 },
+      modules: Array.from({ length: SCENE_LIMITS.maxModules + 1 }, (_, index) => ({
+        ...module,
+        id: `m-${index}`,
+        transform: { x: 0, z: 0, rotY: 0 },
+      })),
+    }).success).toBe(false)
+  })
+
+  it('caps a toast when many placement warnings repeat', () => {
+    const module = {
+      id: 'a',
+      type: 'freestanding-pergola' as const,
+      name: 'A',
+      params: { width: 10, depth: 10, height: 9, rafterCount: 6, postNominal: 6 as const },
+      transform: { x: 0, z: 0, rotY: 0 },
+    }
+    const crowded = worldSchema.parse({
+      schemaVersion: 1,
+      units: 'imperial',
+      site: { width: 42, depth: 36 },
+      modules: Array.from({ length: 8 }, (_, index) => ({
+        ...module,
+        id: `m-${index}`,
+        name: `Module ${index}`,
+      })),
+    })
+    const summary = summarizeSceneIssues(validateWorld(crowded))
+    expect(summary).toContain('overlaps')
+    expect(summary).toContain('(+')
+    expect(summary.length).toBeLessThan(500)
+    expect(summarizeSceneIssues([
+      { severity: 'warning', code: 'overlap', message: '"A" overlaps "B".', moduleIds: ['a', 'b'] },
+      { severity: 'warning', code: 'overlap', message: '"A" overlaps "B".', moduleIds: ['a', 'b'] },
+    ])).toBe('"A" overlaps "B".')
+  })
+
   it('rejects duplicate ids', () => {
     const world = worldSchema.parse({
       schemaVersion: 1,
+      units: 'imperial',
       site: { width: 40, depth: 40 },
       modules: [
         {
@@ -217,6 +337,7 @@ describe('validation', () => {
       ],
     })
     expect(validateWorld(world).some((issue) => issue.code === 'duplicate-id')).toBe(true)
+    expect(() => importWorldJson(JSON.stringify(world))).toThrow(/used more than once/)
   })
 })
 
@@ -246,6 +367,34 @@ describe('share hash', () => {
     expect(decodeShareHash('#scene=@@@').status).toBe('error')
     expect(decodeShareHash('#tpl=not-real&w=12&d=10&h=9&r=8&post=6&world=1').status).toBe('error')
   })
+
+  it('rejects a hash over 64 KB before decoding it', () => {
+    const hash = `#scene=${'A'.repeat(SCENE_LIMITS.maxShareHashChars)}`
+    expect(hash.length).toBeGreaterThan(SCENE_LIMITS.maxShareHashChars)
+    const decoded = decodeShareHash(hash)
+    expect(decoded.status).toBe('error')
+    if (decoded.status === 'error') expect(decoded.message).toMatch(/64 KB/)
+  })
+
+  it('restores an out-of-bounds link that stays inside the hard caps', () => {
+    const world = worldSchema.parse({
+      schemaVersion: 1,
+      units: 'imperial',
+      site: { width: 42, depth: 36 },
+      modules: [{
+        id: 'shared-module',
+        type: 'freestanding-pergola',
+        name: 'Shared structure',
+        params: { width: 24, depth: 10, height: 9, rafterCount: 8, postNominal: 6 },
+        transform: { x: 18, z: 0, rotY: 0 },
+      }],
+    })
+    const decoded = decodeShareHash(encodeShareHash(world, { activeModuleId: 'shared-module', worldMode: false }))
+    expect(decoded.status).toBe('restored')
+    if (decoded.status !== 'restored') return
+    expect(decoded.warnings.some((issue) => issue.code === 'out-of-bounds')).toBe(true)
+    expect(decodeShareHash('#tpl=freestanding-pergola&w=12&d=10&h=9&r=100&post=6&world=0').status).toBe('error')
+  })
 })
 
 describe('storage', () => {
@@ -271,20 +420,139 @@ describe('storage', () => {
     expect(storage.getItem(WORLD_STORAGE_KEY)).toBe('{not json')
   })
 
-  it('prefers a valid share hash over stored projects', () => {
-    const stored = createDefaultWorld()
+  it('opens a share link read-only so an edit does not replace stored projects', () => {
+    const original = JSON.stringify(legacyProjects)
+    const storage = memory({ [LEGACY_PROJECTS_KEY]: original })
     const shared = displayProjectsToWorld(
       [DEFAULT_PROJECT_SEEDS[1]!],
       'metric',
       { width: feetToMeters(42), depth: feetToMeters(36) },
     )
-    const storage = memory({ [WORLD_STORAGE_KEY]: JSON.stringify(stored) })
     const resolved = resolveInitialScene({
       hash: encodeShareHash(shared, { activeModuleId: 'proj-garden-lounge', worldMode: true }),
       storage,
     })
     expect(resolved.hashStatus).toBe('restored')
+    expect(resolved.persist).toBe(false)
     expect(resolved.view).toEqual({ activeModuleId: 'proj-garden-lounge', worldMode: true })
     expect(resolved.world.modules).toHaveLength(1)
+
+    const before = storage.dump()
+    commitScene(storage, resolved.world, resolved.persist)
+    expect(storage.dump()).toEqual(before)
+    expect(storage.getItem(LEGACY_PROJECTS_KEY)).toBe(original)
+    expect(storage.getItem(WORLD_STORAGE_KEY)).toBeNull()
+  })
+
+  it('adds a shared scene onto stored projects instead of replacing them', () => {
+    const original = JSON.stringify(legacyProjects)
+    const storage = memory({ [LEGACY_PROJECTS_KEY]: original })
+    const shared = displayProjectsToWorld(
+      [{ ...DEFAULT_PROJECT_SEEDS[0]!, id: 'proj-patio-pergola', name: 'Shared patio' }],
+      'metric',
+      { width: feetToMeters(42), depth: feetToMeters(36) },
+    )
+    const result = saveSharedToProjects(storage, shared, 'proj-patio-pergola')
+    expect(result.added).toBe(1)
+    expect(result.activeModuleId).not.toBe('proj-patio-pergola')
+    expect(result.world.modules.map((module) => module.id)).toEqual([
+      ...legacyProjects.map((project) => project.id),
+      result.activeModuleId,
+    ])
+    expect(result.world.modules.at(-1)?.name).toBe('Shared patio')
+    expect(result.world.units).toBe('imperial')
+    expect(storage.getItem(LEGACY_PROJECTS_KEY)).toBeNull()
+    expect(storage.getItem(LEGACY_BACKUP_KEY)).toBe(original)
+    const saved = JSON.parse(storage.getItem(WORLD_STORAGE_KEY) ?? 'null') as { modules: unknown[] }
+    expect(saved.modules).toHaveLength(legacyProjects.length + 1)
+  })
+
+  it('does not persist an import that fails migration', () => {
+    const original = JSON.stringify(legacyProjects)
+    const storage = memory({ [LEGACY_PROJECTS_KEY]: original })
+    expect(() => importWorldReplacingStored(storage, '{"schemaVersion":2}')).toThrow(SceneImportError)
+    expect(storage.getItem(LEGACY_PROJECTS_KEY)).toBe(original)
+    expect(storage.getItem(WORLD_STORAGE_KEY)).toBeNull()
+    expect(storage.getItem(LEGACY_BACKUP_KEY)).toBe(original)
+  })
+
+  it('backs up before a successful import replaces the scene', () => {
+    const original = JSON.stringify(legacyProjects)
+    const storage = memory({ [LEGACY_PROJECTS_KEY]: original })
+    const imported = importWorldReplacingStored(storage, exportWorldJson(createDefaultWorld()))
+    expect(imported.world.units).toBe('metric')
+    expect(storage.getItem(LEGACY_PROJECTS_KEY)).toBeNull()
+    expect(storage.getItem(LEGACY_BACKUP_KEY)).toBe(original)
+    expect(storage.getItem(WORLD_STORAGE_KEY)).toBeTruthy()
+  })
+
+  it('quarantines one bad v2 row and keeps the rest', () => {
+    const rows: Array<Record<string, unknown>> = legacyProjects.map((project) => ({ ...project }))
+    const bad = { ...rows[1], template: 'not-a-type' }
+    rows[1] = bad
+    const original = JSON.stringify(rows)
+    const storage = memory({ [LEGACY_PROJECTS_KEY]: original })
+    const resolved = resolveInitialScene({ hash: '', storage })
+    expect(resolved.persist).toBe(true)
+    expect(resolved.world.modules.map((module) => module.id)).toEqual([
+      legacyProjects[0]!.id,
+      legacyProjects[2]!.id,
+      legacyProjects[3]!.id,
+    ])
+    expect(storage.getItem(LEGACY_QUARANTINE_KEY)).toBe(JSON.stringify([bad]))
+    expect(storage.getItem(LEGACY_PROJECTS_KEY)).toBe(original)
+    saveWorld(storage, resolved.world)
+    expect(storage.getItem(LEGACY_PROJECTS_KEY)).toBeNull()
+    expect(storage.getItem(LEGACY_BACKUP_KEY)).toBe(original)
+    expect(storage.getItem(LEGACY_QUARANTINE_KEY)).toBe(JSON.stringify([bad]))
+  })
+
+  it('does not replace an unreadable v2 list with the demo garden', () => {
+    const rows = [{ nope: true }, { also: 'bad' }]
+    const original = JSON.stringify(rows)
+    const storage = memory({ [LEGACY_PROJECTS_KEY]: original })
+    const resolved = resolveInitialScene({ hash: '', storage })
+    expect(resolved.persist).toBe(false)
+    expect(resolved.world.modules).toEqual([])
+    expect(resolved.world.modules).not.toEqual(createDefaultWorld().modules)
+    commitScene(storage, createDefaultWorld(), resolved.persist)
+    expect(storage.getItem(LEGACY_PROJECTS_KEY)).toBe(original)
+    expect(storage.getItem(WORLD_STORAGE_KEY)).toBeNull()
+    expect(storage.getItem(LEGACY_QUARANTINE_KEY)).toBe(original)
+  })
+
+  it('keeps the v2 key when the saved world cannot be read back', () => {
+    const original = JSON.stringify(legacyProjects)
+    const backing = memory({ [LEGACY_PROJECTS_KEY]: original })
+    let written: string | null = null
+    const flaky: StorageLike = {
+      getItem: (key) => (key === WORLD_STORAGE_KEY ? (written === null ? null : '{broken') : backing.getItem(key)),
+      setItem: (key, value) => {
+        if (key === WORLD_STORAGE_KEY) written = value
+        else backing.setItem(key, value)
+      },
+      removeItem: (key) => {
+        if (key === WORLD_STORAGE_KEY) written = null
+        else backing.removeItem(key)
+      },
+    }
+    expect(() => saveWorld(flaky, createDefaultWorld())).toThrow(/could not be verified/)
+    expect(written).toBeNull()
+    expect(backing.getItem(LEGACY_PROJECTS_KEY)).toBe(original)
+    expect(backing.getItem(LEGACY_BACKUP_KEY)).toBe(original)
+  })
+
+  it('does not open an oversized share over stored projects', () => {
+    const original = JSON.stringify(legacyProjects)
+    const storage = memory({ [LEGACY_PROJECTS_KEY]: original })
+    const resolved = resolveInitialScene({
+      hash: `#scene=${'A'.repeat(SCENE_LIMITS.maxShareHashChars)}`,
+      storage,
+    })
+    expect(resolved.hashStatus).toBe('error')
+    expect(resolved.persist).toBe(true)
+    expect(resolved.world.modules).toHaveLength(legacyProjects.length)
+    expect(storage.getItem(WORLD_STORAGE_KEY)).toBeNull()
+    expect(storage.getItem(LEGACY_PROJECTS_KEY)).toBe(original)
   })
 })

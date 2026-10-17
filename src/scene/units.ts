@@ -1,12 +1,20 @@
 import type { UnitSystem } from './schema'
 
-/** International foot. Display conversion snaps metric values back to 0.001 ft. */
+/** International foot. Display and storage share this 0.001 ft grid. */
 export const METERS_PER_FOOT = 0.3048
 
-const FEET_DISPLAY_STEP = 0.001
+/**
+ * Snap to the nearest thousandth of a foot.
+ * Metric storage uses the same grid, so a load then save does not walk
+ * the stored meters by about 0.1 mm.
+ */
+export function snapFeet(feet: number): number {
+  return Math.round(feet * 1000) / 1000
+}
 
 export function feetToMeters(feet: number): number {
-  return feet * METERS_PER_FOOT
+  const thousandths = Math.round(snapFeet(feet) * 1000)
+  return (thousandths * METERS_PER_FOOT) / 1000
 }
 
 /**
@@ -15,8 +23,7 @@ export function feetToMeters(feet: number): number {
  * (14 ft is not exactly representable through IEEE meters).
  */
 export function metersToFeet(meters: number): number {
-  const feet = meters / METERS_PER_FOOT
-  return Math.round(feet / FEET_DISPLAY_STEP) * FEET_DISPLAY_STEP
+  return snapFeet(meters / METERS_PER_FOOT)
 }
 
 /** Length stored on a World, expressed in feet for the current UI. */

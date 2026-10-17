@@ -46,6 +46,38 @@ export function parseLegacyProjects(input: unknown): LegacyProjectV2[] {
   })
 }
 
+export interface LegacyPartition {
+  projects: LegacyProjectV2[]
+  rejected: unknown[]
+}
+
+/**
+ * Keep rows that become a valid module. Everything else is returned for
+ * quarantine so one bad row does not drop the list.
+ */
+export function partitionLegacyProjects(input: unknown): LegacyPartition {
+  if (!Array.isArray(input)) {
+    throw new SceneImportError('Invalid legacy project list: expected an array.')
+  }
+  const projects: LegacyProjectV2[] = []
+  const rejected: unknown[] = []
+  for (const item of input) {
+    const parsed = legacyProjectSchema.safeParse(item)
+    if (!parsed.success) {
+      rejected.push(item)
+      continue
+    }
+    try {
+      migrateV2Projects([parsed.data])
+    } catch {
+      rejected.push(item)
+      continue
+    }
+    projects.push(parsed.data)
+  }
+  return { projects, rejected }
+}
+
 /**
  * Legacy `structuracad_projects_v2` rows are imperial feet.
  * Numbers are copied unchanged so the migration is lossless.
