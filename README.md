@@ -2,23 +2,33 @@
 
 End-to-end 3D blueprint, joinery dissection, and modular garden property builder for residential exterior alterations.
 
-## Live Demo
+The 3D models and fastener schedules are **illustrative, not engineered**. They are a way to walk a scheme, not a structural design. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-- **Preview Channel URL:** https://rapid-prototyping-4134c--structura-cad-hniefkz2.web.app
-- **Main Firebase URL:** https://rapid-prototyping-4134c.web.app
+## Local development
 
-## Complete User Journey
+```bash
+npm install
+npm run dev
+```
 
-1. **Workspace Sign-In (`Login`)**
-   - Configure your Builder / Property Owner workspace and Garden Plot dimensions (e.g., `Backyard Patio & South Garden (42ft × 36ft)`).
-2. **Project Tracker & Modular 3D Garden World Composer (`01 · Projects & Garden World`)**
-   - Track multiple exterior and garden projects (Main Patio Attached Pergola, South Lawn Freestanding Pergola, Outdoor Kitchen Lean-To Veranda, Cedar Pergola Arbour & Raised Beds).
-   - Check **"Include in 3D Garden World"** on any combination of project cards and click **Launch Combined 3D World** to bring all selected structures together on a shared 3D property plot.
-3. **Explain Project + Multimodal Sketch & Image Parser (`02 · Explain & Sketch Intake`)**
-   - Describe your project in natural language or upload an inspiration photo / hand-drawn elevation sketch.
-   - Includes an interactive **Blueprint Sketch Pad** with sample architectural sketches (`Attached Pergola`, `4-Post + Planters`, `Sloped Veranda`) and a contour vision analyzer that extracts span width, clearance height, rafter count, and hardware requirements into a 3D model.
-4. **3D Build, Enhance/Tweak & Joinery Inspector (`03 · 3D Studio & Joinery`)**
-   - Switch seamlessly between **Single Structure** and **Modular Garden World** views, and position individual garden modules on the property grid (`X / Z` plot offset sliders).
-   - Inspect **J1–J4 Joint Pins** (`J1` Foundation Standoff Anchor, `J2` Post-to-Double-Beam Thru-Bolts, `J3` House Wall Ledger & Joist Hanger, `J4` Rafter Birdsmouth & Hurricane Tie) with 0–100% Explode sliders, **X-Ray Fasteners** mode, and 2D cross-section schematics.
-5. **Deploy, Export & Share Hub (`04 · Deploy, Export & Share`)**
-   - Copy a state-encoded shareable 3D builder link, download the **Cut List & Simpson Fastener CSV**, capture a **3D WebGL Blueprint PNG**, or export the **Modular Garden World JSON**.
+`npm test` runs the unit suite. `npm run build` writes `dist`.
+
+The app is Vite + TypeScript. `three` is pinned to 0.160.0, including OrbitControls from that package. Module layout and the scene format are documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Hosting
+
+Firebase Hosting serves `dist` for the dedicated project `structura-cad`. The shared `rapid-prototyping-4134c` project is not the target, and there is no deploy workflow. Manual setup is in [docs/FIREBASE.md](docs/FIREBASE.md).
+
+Earlier previews were published on that shared project (`https://rapid-prototyping-4134c.web.app` and a preview channel). Those URLs are historical and are not updated by this repo.
+
+## User journey
+
+1. **Workspace sign-in.** Name the workspace and the garden plot. The plot field is a label. The 3D site is the 42 ft × 36 ft rectangle stored on the scene.
+2. **Project tracker.** The seeded garden has four structures. Check **Include in 3D Garden World** and launch the combined view.
+3. **Explain and sketch.** The text parser reads dimensions from the description. The sketch control is a **heuristic placeholder** (a bright-pixel bounding box). It is not a vision model. The on-screen wording still says "vision"; changing that copy is a Gemini follow-up.
+4. **3D studio.** Single structure or the modular garden. Joint pins J1–J4, explode, and the cut list. In the garden view the cut list includes every module on the plot.
+5. **Export.** The share link restores a schema v1 scene from `location.hash`. JSON download and drop-to-import use the same schema. CSV and PNG match the previous actions.
+
+## Scene data
+
+New scenes are metric. The screen stays in feet until the display switch is designed. Existing `structuracad_projects_v2` rows in `localStorage` migrate losslessly into a World. Details are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
