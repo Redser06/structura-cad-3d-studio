@@ -19,6 +19,13 @@ import {
 } from './storage/storage'
 import { JOINT_SPECS } from './ui/jointSpecs'
 import {
+  activatesSelectionToggle,
+  emptyGardenSelectionMessage,
+  gardenWorldLaunchDecision,
+  selectedModuleCount,
+  toggleProjectInWorld,
+} from './ui/moduleSelection'
+import {
   renderBomTableHtml,
   renderParsedTagsHtml,
   renderProjectCardsHtml,
@@ -143,12 +150,36 @@ function showToast(msg: string): void {
 }
 
 function updateWorldModeButtons(): void {
-  const worldCount = projects.filter((project) => project.inWorld).length
+  const worldCount = selectedModuleCount(projects)
   const singleBtn = el<HTMLButtonElement>('btn-single-mode')
   const worldBtn = el<HTMLButtonElement>('btn-world-mode')
   worldBtn.textContent = `Modular Garden World (${worldCount})`
   singleBtn.classList.toggle('active', !state.worldMode)
   worldBtn.classList.toggle('active', state.worldMode)
+}
+
+function syncGardenLaunchControls(): void {
+  const decision = gardenWorldLaunchDecision(projects)
+  const hint = el<HTMLElement>('world-selection-hint')
+  hint.hidden = decision.allowed
+  if (!decision.allowed && decision.message) hint.textContent = decision.message
+  for (const id of ['btn-open-world-builder', 'btn-launch-combined-world']) {
+    const button = el<HTMLButtonElement>(id)
+    button.disabled = !decision.allowed
+    if (decision.allowed) button.removeAttribute('title')
+    else if (decision.message) button.title = decision.message
+  }
+}
+
+function applyModuleToggle(id: string, restoreFocus: boolean): void {
+  const before = selectedModuleCount(projects)
+  if (toggleProjectInWorld(projects, id) === undefined) return
+  persistWorld()
+  renderDashboardProjects()
+  if (before > 0 && selectedModuleCount(projects) === 0) showToast(emptyGardenSelectionMessage())
+  if (!restoreFocus) return
+  const toggle = document.querySelector<HTMLButtonElement>(`.module-include-toggle[data-id="${CSS.escape(id)}"]`)
+  toggle?.focus()
 }
 
 function renderStudioModuleList(): void {
@@ -173,23 +204,43 @@ function renderStudioModuleList(): void {
 
 function renderDashboardProjects(): void {
   const container = el<HTMLElement>('project-cards-container')
-  const worldCount = projects.filter((project) => project.inWorld).length
+  const worldCount = selectedModuleCount(projects)
   el('world-selected-count').textContent = `${worldCount} Module${worldCount === 1 ? '' : 's'} Linked`
   el('btn-world-mode').textContent = `Modular Garden World (${worldCount})`
   container.innerHTML = renderProjectCardsHtml(projects)
+  syncGardenLaunchControls()
 
-  container.querySelectorAll<HTMLInputElement>('.toggle-world-check').forEach((checkbox) => {
-    checkbox.addEventListener('change', () => {
-      const project = projects.find((item) => item.id === checkbox.dataset.id)
-      if (!project) return
-      project.inWorld = checkbox.checked
-      persistWorld()
-      renderDashboardProjects()
+  container.querySelectorAll<HTMLElement>('.project-card').forEach((card) => {
+    card.addEventListener('click', (event) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (target.closest('.open-proj-studio-btn, .module-include-toggle')) return
+      const id = card.dataset.projId
+      if (!id) return
+      applyModuleToggle(id, false)
+    })
+  })
+
+  container.querySelectorAll<HTMLButtonElement>('.module-include-toggle').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
+      if (event.detail === 0) return
+      const id = button.dataset.id
+      if (!id) return
+      applyModuleToggle(id, false)
+    })
+    button.addEventListener('keydown', (event) => {
+      if (!activatesSelectionToggle(event.key)) return
+      event.preventDefault()
+      const id = button.dataset.id
+      if (!id) return
+      applyModuleToggle(id, true)
     })
   })
 
   container.querySelectorAll<HTMLButtonElement>('.open-proj-studio-btn').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation()
       state.worldMode = false
       updateWorldModeButtons()
       loadProjectIntoState(button.dataset.id ?? '')
@@ -585,6 +636,11 @@ el('btn-select-all-world').addEventListener('click', () => {
 })
 
 function launchCombinedGardenWorld(): void {
+  const decision = gardenWorldLaunchDecision(projects)
+  if (!decision.allowed) {
+    showToast(decision.message ?? emptyGardenSelectionMessage())
+    return
+  }
   state.worldMode = true
   updateWorldModeButtons()
   switchView('studio')
