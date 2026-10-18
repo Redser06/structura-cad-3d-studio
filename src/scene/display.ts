@@ -34,7 +34,7 @@ export function worldToDisplayProjects(world: World): DisplayProject[] {
     offsetX: lengthToFeet(module.transform.x, world.units),
     offsetZ: lengthToFeet(module.transform.z, world.units),
     rotY: module.transform.rotY,
-    inWorld: module.meta?.inWorld ?? false,
+    inWorld: module.meta?.inWorld ?? true,
     ...(module.refs ? { refs: [...module.refs] } : {}),
   }))
 }

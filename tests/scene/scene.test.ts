@@ -98,6 +98,20 @@ describe('migrations', () => {
     expect(again).toEqual(world)
   })
 
+  it('includes a module when meta.inWorld was never stored', () => {
+    const world = createDefaultWorld()
+    const source = world.modules[2]!
+    const omitted = { ...source, meta: { zone: source.meta?.zone, status: source.meta?.status } }
+    const withoutMeta = { ...source }
+    delete withoutMeta.meta
+    expect(worldToDisplayProjects({ ...world, modules: [omitted] })[0]?.inWorld).toBe(true)
+    expect(worldToDisplayProjects({ ...world, modules: [withoutMeta] })[0]?.inWorld).toBe(true)
+    expect(worldToDisplayProjects({
+      ...world,
+      modules: [{ ...source, meta: { ...source.meta, inWorld: false } }],
+    })[0]?.inWorld).toBe(false)
+  })
+
   it('migrates the previous export envelope', () => {
     const world = migrateToLatest({ exportedAt: '2026-01-01', workspace: 'Conor', projects: legacyProjects })
     expect(world.modules).toHaveLength(4)

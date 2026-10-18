@@ -158,17 +158,49 @@ function updateWorldModeButtons(): void {
   worldBtn.classList.toggle('active', state.worldMode)
 }
 
+const WORLD_ENTRY_CONTROLS = [
+  'btn-open-world-builder',
+  'btn-launch-combined-world',
+  'btn-world-mode',
+  'btn-toggle-world-all',
+  'slider-pos-x',
+  'slider-pos-z',
+] as const
+
+function rememberIdleTitle(node: HTMLElement): void {
+  if (node.dataset.idleTitleStored === '1') return
+  node.dataset.idleTitle = node.getAttribute('title') ?? ''
+  node.dataset.idleTitleStored = '1'
+}
+
+function setWorldEntryBlocked(node: HTMLElement, blocked: boolean): void {
+  rememberIdleTitle(node)
+  if (blocked) {
+    node.setAttribute('aria-disabled', 'true')
+    node.setAttribute('aria-describedby', 'world-selection-hint')
+    node.title = emptyGardenSelectionMessage()
+    return
+  }
+  node.removeAttribute('aria-disabled')
+  node.removeAttribute('aria-describedby')
+  const idle = node.dataset.idleTitle ?? ''
+  if (idle) node.title = idle
+  else node.removeAttribute('title')
+}
+
 function syncGardenLaunchControls(): void {
   const decision = gardenWorldLaunchDecision(projects)
   const hint = el<HTMLElement>('world-selection-hint')
   hint.hidden = decision.allowed
   if (!decision.allowed && decision.message) hint.textContent = decision.message
-  for (const id of ['btn-open-world-builder', 'btn-launch-combined-world']) {
-    const button = el<HTMLButtonElement>(id)
-    button.disabled = !decision.allowed
-    if (decision.allowed) button.removeAttribute('title')
-    else if (decision.message) button.title = decision.message
-  }
+  for (const id of WORLD_ENTRY_CONTROLS) setWorldEntryBlocked(el(id), !decision.allowed)
+}
+
+/** True when the click was refused. The buttons stay focusable, so this guard is what blocks the build. */
+function refuseGardenWorldEntry(): boolean {
+  if (gardenWorldLaunchDecision(projects).allowed) return false
+  showToast(emptyGardenSelectionMessage())
+  return true
 }
 
 function applyModuleToggle(id: string, restoreFocus: boolean): void {
@@ -178,8 +210,10 @@ function applyModuleToggle(id: string, restoreFocus: boolean): void {
   renderDashboardProjects()
   if (before > 0 && selectedModuleCount(projects) === 0) showToast(emptyGardenSelectionMessage())
   if (!restoreFocus) return
-  const toggle = document.querySelector<HTMLButtonElement>(`.module-include-toggle[data-id="${CSS.escape(id)}"]`)
-  toggle?.focus()
+  const escaped = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+    ? CSS.escape(id)
+    : id.replace(/(["\\])/g, '\\$1')
+  document.querySelector<HTMLButtonElement>(`.module-include-toggle[data-id="${escaped}"]`)?.focus()
 }
 
 function renderStudioModuleList(): void {
@@ -224,14 +258,22 @@ function renderDashboardProjects(): void {
   container.querySelectorAll<HTMLButtonElement>('.module-include-toggle').forEach((button) => {
     button.addEventListener('click', (event) => {
       event.stopPropagation()
-      if (event.detail === 0) return
+      if (button.dataset.keyboardToggle === '1') {
+        delete button.dataset.keyboardToggle
+        return
+      }
       const id = button.dataset.id
       if (!id) return
-      applyModuleToggle(id, false)
+      applyModuleToggle(id, event.detail === 0)
     })
     button.addEventListener('keydown', (event) => {
       if (!activatesSelectionToggle(event.key)) return
+      if (event.repeat) {
+        event.preventDefault()
+        return
+      }
       event.preventDefault()
+      button.dataset.keyboardToggle = '1'
       const id = button.dataset.id
       if (!id) return
       applyModuleToggle(id, true)
@@ -636,11 +678,7 @@ el('btn-select-all-world').addEventListener('click', () => {
 })
 
 function launchCombinedGardenWorld(): void {
-  const decision = gardenWorldLaunchDecision(projects)
-  if (!decision.allowed) {
-    showToast(decision.message ?? emptyGardenSelectionMessage())
-    return
-  }
+  if (refuseGardenWorldEntry()) return
   state.worldMode = true
   updateWorldModeButtons()
   switchView('studio')
@@ -882,12 +920,14 @@ el('btn-single-mode').addEventListener('click', () => {
   resetCameraFullView()
 })
 el('btn-world-mode').addEventListener('click', () => {
+  if (refuseGardenWorldEntry()) return
   state.worldMode = true
   updateWorldModeButtons()
   rebuildStructure()
   flyCameraTo(new THREE.Vector3(28, 20, 32), new THREE.Vector3(0, 3.5, 0), 700)
 })
 el('btn-toggle-world-all').addEventListener('click', () => {
+  if (refuseGardenWorldEntry()) return
   state.worldMode = !state.worldMode
   updateWorldModeButtons()
   rebuildStructure()
@@ -961,12 +1001,20 @@ el<HTMLInputElement>('slider-postsize').addEventListener('input', (event) => {
   rebuildStructure()
 })
 el<HTMLInputElement>('slider-pos-x').addEventListener('input', (event) => {
+  if (refuseGardenWorldEntry()) {
+    el<HTMLInputElement>('slider-pos-x').value = String(state.offsetX)
+    return
+  }
   state.offsetX = parseFloat(sliderValue(event))
   state.worldMode = true
   updateWorldModeButtons()
   rebuildStructure()
 })
 el<HTMLInputElement>('slider-pos-z').addEventListener('input', (event) => {
+  if (refuseGardenWorldEntry()) {
+    el<HTMLInputElement>('slider-pos-z').value = String(state.offsetZ)
+    return
+  }
   state.offsetZ = parseFloat(sliderValue(event))
   state.worldMode = true
   updateWorldModeButtons()
