@@ -3,7 +3,7 @@ import { escapeHtml } from './escapeHtml'
 
 export function renderProjectCardsHtml(projects: DisplayProject[]): string {
   return projects.map((project) => `
-        <div class="project-card ${project.inWorld ? 'selected-for-world' : ''}" data-proj-id="${escapeHtml(project.id)}">
+        <div class="project-card${project.inWorld ? ' selected-for-world' : ''}" data-proj-id="${escapeHtml(project.id)}">
           <div class="proj-card-top">
             <div>
               <div class="proj-card-title">${escapeHtml(project.name)}</div>
@@ -28,11 +28,13 @@ export function renderProjectCardsHtml(projects: DisplayProject[]): string {
           </div>
 
           <div class="proj-card-footer">
-            <label class="world-check-label">
-              <input type="checkbox" class="toggle-world-check" data-id="${escapeHtml(project.id)}" ${project.inWorld ? 'checked' : ''} />
-              <span>Include in 3D Garden World</span>
-            </label>
-            <button class="btn-secondary open-proj-studio-btn" data-id="${escapeHtml(project.id)}" style="padding:6px 12px; font-size:11.5px;">
+            <div class="world-check-label">
+              <input type="checkbox" class="toggle-world-check" tabindex="-1" aria-hidden="true" data-id="${escapeHtml(project.id)}" ${project.inWorld ? 'checked' : ''} />
+              <button type="button" class="module-include-toggle" data-id="${escapeHtml(project.id)}" aria-pressed="${project.inWorld ? 'true' : 'false'}" aria-label="${escapeHtml(`Include ${project.name} in 3D Garden World`)}">
+                Include in 3D Garden World
+              </button>
+            </div>
+            <button type="button" class="btn-secondary open-proj-studio-btn" data-id="${escapeHtml(project.id)}" style="padding:6px 12px; font-size:11.5px;">
               Open in 3D Studio →
             </button>
           </div>
